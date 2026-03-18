@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
+  LayoutChangeEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -9,31 +10,301 @@ import {
   Text,
   View,
 } from "react-native";
+import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
+import {
+  buildDailyIndices,
+  buildTrendSignals,
+  detectInterpretations,
+} from "@/engine/trendEngine";
+import type {
+  CrossLayerInterpretation,
+  TrendSignal,
+} from "@/engine/trendEngine";
 import type { WeeklyRecommendation } from "@/types";
 
+// ─── Signal color map ─────────────────────────────────────────────────────────
+const SIGNAL_COLORS: Record<string, string> = {
+  recoveryNeedScore: Colors.light.rose,
+  adhdPullScore:     Colors.light.amber,
+  autismPullScore:   Colors.light.structuring,
+  hrv:               Colors.light.structuring,
+  rhr:               Colors.light.rose,
+  deepSleepMin:      Colors.light.accent,
+};
+
+function deltaColor(delta: number, higherIsWorse: boolean): string {
+  if (Math.abs(delta) < 0.1) return Colors.light.textMuted;
+  const improving = higherIsWorse ? delta < 0 : delta > 0;
+  return improving ? Colors.light.structuring : Colors.light.rose;
+}
+
+function deltaLabel(delta: number, unit: string): string {
+  const sign = delta > 0 ? "+" : "";
+  const rounded = Math.abs(delta) < 10
+    ? (Math.round(delta * 10) / 10).toFixed(1)
+    : Math.round(delta).toString();
+  return `${sign}${rounded}${unit}`;
+}
+
+// ─── Sparkline ────────────────────────────────────────────────────────────────
+const SPARK_H = 36;
+const MS_DAY = 86_400_000;
+
+function Sparkline({
+  signal,
+  width,
+}: {
+  signal: TrendSignal;
+  width: number;
+}) {
+  const pts = signal.points;
+  if (pts.length < 2 || width < 4) return null;
+
+  const color = SIGNAL_COLORS[signal.key] ?? Colors.light.accent;
+  const values = pts.map((p) => p.value);
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+  const rangeV = maxV - minV || 1;
+
+  const minT = new Date(pts[0]!.date).getTime();
+  const maxT = new Date(pts[pts.length - 1]!.date).getTime();
+  const rangeT = maxT - minT || 1;
+
+  const PAD = 4;
+  const toX = (date: string) =>
+    PAD + ((new Date(date).getTime() - minT) / rangeT) * (width - PAD * 2);
+  const toY = (val: number) =>
+    PAD + ((maxV - val) / rangeV) * (SPARK_H - PAD * 2);
+
+  // Build path with gap detection
+  let d = "";
+  for (let i = 0; i < pts.length; i++) {
+    const pt = pts[i]!;
+    const x = toX(pt.date);
+    const y = toY(pt.value);
+    if (i === 0) {
+      d += `M${x.toFixed(1)},${y.toFixed(1)}`;
+    } else {
+      const gap =
+        new Date(pt.date).getTime() - new Date(pts[i - 1]!.date).getTime();
+      if (gap > MS_DAY * 1.5) {
+        d += ` M${x.toFixed(1)},${y.toFixed(1)}`;
+      } else {
+        d += ` L${x.toFixed(1)},${y.toFixed(1)}`;
+      }
+    }
+  }
+
+  const lastPt = pts[pts.length - 1]!;
+  const lx = toX(lastPt.date);
+  const ly = toY(lastPt.value);
+
+  return (
+    <Svg width={width} height={SPARK_H}>
+      <Path
+        d={d}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        opacity={0.8}
+      />
+      <Circle cx={lx} cy={ly} r={3} fill={color} />
+    </Svg>
+  );
+}
+
+// ─── Signal card ──────────────────────────────────────────────────────────────
+function SignalCard({ signal }: { signal: TrendSignal }) {
+  const [cardW, setCardW] = useState(0);
+  const onLayout = useCallback(
+    (e: LayoutChangeEvent) => setCardW(e.nativeEvent.layout.width - 24),
+    []
+  );
+  const color = SIGNAL_COLORS[signal.key] ?? Colors.light.accent;
+  const hasData = signal.points.length > 0;
+  const dColor =
+    signal.delta !== undefined
+      ? deltaColor(signal.delta, signal.higherIsWorse)
+      : Colors.light.textMuted;
+
+  return (
+    <View style={sc.card} onLayout={onLayout}>
+      <View style={sc.topRow}>
+        <Text style={sc.label}>{signal.label}</Text>
+        <View
+          style={[
+            sc.confBadge,
+            {
+              backgroundColor:
+                signal.confidence === "high"
+                  ? Colors.light.structuring + "22"
+                  : Colors.light.amber + "22",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              sc.confText,
+              {
+                color:
+                  signal.confidence === "high"
+                    ? Colors.light.structuring
+                    : Colors.light.amber,
+              },
+            ]}
+          >
+            {signal.confidence === "high" ? "High" : "Low"}
+          </Text>
+        </View>
+      </View>
+
+      {hasData ? (
+        <>
+          <View style={sc.valueRow}>
+            <Text style={[sc.value, { color }]}>
+              {signal.latestValue !== undefined
+                ? signal.key === "recoveryNeedScore" ||
+                  signal.key === "adhdPullScore" ||
+                  signal.key === "autismPullScore"
+                  ? (Math.round(signal.latestValue * 10) / 10).toFixed(1)
+                  : Math.round(signal.latestValue).toString()
+                : "—"}
+            </Text>
+            <Text style={sc.unit}>{signal.unit}</Text>
+            {signal.delta !== undefined &&
+              Math.abs(signal.delta) >= 0.1 && (
+                <View style={[sc.deltaBadge, { backgroundColor: dColor + "22" }]}>
+                  <Text style={[sc.deltaText, { color: dColor }]}>
+                    {deltaLabel(signal.delta, signal.unit)}
+                  </Text>
+                </View>
+              )}
+          </View>
+          <View style={sc.sparkWrap}>
+            <Sparkline signal={signal} width={cardW} />
+          </View>
+          <Text style={sc.pointCount}>
+            {signal.points.length} data {signal.points.length === 1 ? "point" : "points"}
+          </Text>
+        </>
+      ) : (
+        <View style={sc.emptyWrap}>
+          <Text style={sc.emptyText}>No data yet</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const sc = StyleSheet.create({
+  card: {
+    flex: 1,
+    minWidth: "46%",
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 12,
+  },
+  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
+  label: { fontFamily: "Inter_500Medium", fontSize: 11, color: Colors.light.textSecondary, flex: 1 },
+  confBadge: { borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
+  confText: { fontFamily: "Inter_600SemiBold", fontSize: 9 },
+  valueRow: { flexDirection: "row", alignItems: "baseline", gap: 4, marginBottom: 4 },
+  value: { fontFamily: "Inter_700Bold", fontSize: 20, letterSpacing: -0.3 },
+  unit: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textMuted },
+  deltaBadge: { borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, marginLeft: 2 },
+  deltaText: { fontFamily: "Inter_600SemiBold", fontSize: 10 },
+  sparkWrap: { marginTop: 2, marginBottom: 2 },
+  pointCount: { fontFamily: "Inter_400Regular", fontSize: 9, color: Colors.light.textMuted, marginTop: 2 },
+  emptyWrap: { height: 52, alignItems: "center", justifyContent: "center" },
+  emptyText: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textMuted },
+});
+
+// ─── Interpretation card ──────────────────────────────────────────────────────
+const INTERP_COLORS: Record<CrossLayerInterpretation["type"], string> = {
+  alignment: Colors.light.structuring,
+  mismatch:  Colors.light.rose,
+  drift:     Colors.light.amber,
+};
+
+const INTERP_ICONS: Record<CrossLayerInterpretation["type"], string> = {
+  alignment: "check-circle",
+  mismatch:  "alert-triangle",
+  drift:     "trending-down",
+};
+
+const INTERP_LABELS: Record<CrossLayerInterpretation["type"], string> = {
+  alignment: "Alignment",
+  mismatch:  "Mismatch",
+  drift:     "Drift",
+};
+
+function InterpretationCard({ interp }: { interp: CrossLayerInterpretation }) {
+  const color = INTERP_COLORS[interp.type];
+  const icon = INTERP_ICONS[interp.type] as never;
+  return (
+    <View style={[ic.card, { borderLeftColor: color }]}>
+      <View style={ic.header}>
+        <View style={[ic.iconCircle, { backgroundColor: color + "22" }]}>
+          <Feather name={icon} size={13} color={color} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[ic.typeLabel, { color }]}>{INTERP_LABELS[interp.type]}</Text>
+          <Text style={ic.title}>{interp.title}</Text>
+        </View>
+      </View>
+      <Text style={ic.desc}>{interp.description}</Text>
+    </View>
+  );
+}
+
+const ic = StyleSheet.create({
+  card: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderLeftWidth: 3,
+    padding: 12,
+  },
+  header: { flexDirection: "row", gap: 8, marginBottom: 6, alignItems: "flex-start" },
+  iconCircle: {
+    width: 26, height: 26, borderRadius: 6,
+    alignItems: "center", justifyContent: "center",
+    marginTop: 1,
+  },
+  typeLabel: { fontFamily: "Inter_600SemiBold", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.5 },
+  title: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: Colors.light.text, marginTop: 1 },
+  desc: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textSecondary, lineHeight: 18 },
+});
+
+// ─── Recommendation card ──────────────────────────────────────────────────────
 const TYPE_ICONS: Record<string, string> = {
-  timing_shift: "clock",
-  fewer_blocks: "minus-circle",
-  meal_timing: "coffee",
+  timing_shift:      "clock",
+  fewer_blocks:      "minus-circle",
+  meal_timing:       "coffee",
   training_placement: "zap",
-  environment: "eye-off",
-  nutrition_phase: "layers",
+  environment:       "eye-off",
+  nutrition_phase:   "layers",
 };
 
 const CONFIDENCE_COLORS: Record<string, string> = {
   pattern_backed: Colors.light.structuring,
-  emerging: Colors.light.amber,
-  speculative: Colors.light.textMuted,
+  emerging:       Colors.light.amber,
+  speculative:    Colors.light.textMuted,
 };
 
 const CONFIDENCE_LABELS: Record<string, string> = {
   pattern_backed: "Pattern-backed",
-  emerging: "Emerging",
-  speculative: "Exploratory",
+  emerging:       "Emerging",
+  speculative:    "Exploratory",
 };
 
 function RecCard({ rec, onDismiss }: { rec: WeeklyRecommendation; onDismiss: () => void }) {
@@ -83,17 +354,54 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
   );
 }
 
+// ─── Window toggle ─────────────────────────────────────────────────────────────
+function WindowToggle({ value, onChange }: { value: 7 | 14; onChange: (v: 7 | 14) => void }) {
+  return (
+    <View style={wt.pill}>
+      {([7, 14] as const).map((w) => (
+        <Pressable
+          key={w}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onChange(w);
+          }}
+          style={[wt.seg, value === w && wt.segActive]}
+        >
+          <Text style={[wt.segText, value === w && wt.segTextActive]}>{w}d</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+const wt = StyleSheet.create({
+  pill: {
+    flexDirection: "row",
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  seg: { paddingHorizontal: 10, paddingVertical: 5 },
+  segActive: { backgroundColor: Colors.light.tint },
+  segText: { fontFamily: "Inter_500Medium", fontSize: 12, color: Colors.light.textSecondary },
+  segTextActive: { color: Colors.light.surface },
+});
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const { state, refreshRecommendations, dismissRecommendation } = useApp();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
+  const [windowDays, setWindowDays] = useState<7 | 14>(14);
 
   const activeRecs = useMemo(
     () => state.recommendations.filter((r) => !r.dismissed),
     [state.recommendations]
   );
 
-  // Pattern stats from last 7 days
+  // 7-day pattern stats (unchanged)
   const recentBlocks = useMemo(() => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 7);
@@ -107,9 +415,10 @@ export default function InsightsScreen() {
   }, [state.snapshots]);
 
   const doneBlocks = recentBlocks.filter((b) => b.status === "done");
-  const adherencePct = recentBlocks.length > 0
-    ? Math.round((doneBlocks.length / recentBlocks.length) * 100)
-    : null;
+  const adherencePct =
+    recentBlocks.length > 0
+      ? Math.round((doneBlocks.length / recentBlocks.length) * 100)
+      : null;
 
   const avgResistance = useMemo(() => {
     const rated = recentBlocks.filter((b) => b.ratings?.resistance !== undefined);
@@ -122,11 +431,28 @@ export default function InsightsScreen() {
     return (recentSnaps.reduce((s, sn) => s + sn.sleepHours, 0) / recentSnaps.length).toFixed(1);
   }, [recentSnaps]);
 
-  const expansionDays = recentSnaps.filter((s) => s.recommendedDayMode === "expansion_favoring").length;
+  const expansionDays   = recentSnaps.filter((s) => s.recommendedDayMode === "expansion_favoring").length;
   const structuringDays = recentSnaps.filter((s) => s.recommendedDayMode === "structuring_favoring").length;
-  const recoveryDays = recentSnaps.filter((s) => s.recommendedDayMode === "recovery_favoring").length;
-
+  const recoveryDays    = recentSnaps.filter((s) => s.recommendedDayMode === "recovery_favoring").length;
   const highOverloadBlocks = recentBlocks.filter((b) => (b.ratings?.overload ?? 0) >= 4);
+
+  // ── Trend layer ────────────────────────────────────────────────────────────
+  const dailyIndices = useMemo(
+    () => buildDailyIndices(state.snapshots, state.quantitativeLogs ?? [], windowDays),
+    [state.snapshots, state.quantitativeLogs, windowDays]
+  );
+
+  const trendSignals = useMemo(() => buildTrendSignals(dailyIndices), [dailyIndices]);
+
+  const interpretations = useMemo(
+    () => detectInterpretations(dailyIndices),
+    [dailyIndices]
+  );
+
+  const totalTrendPoints = useMemo(
+    () => trendSignals.reduce((sum, s) => sum + s.points.length, 0),
+    [trendSignals]
+  );
 
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
@@ -149,7 +475,7 @@ export default function InsightsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
       >
-        {/* 7-day stats grid */}
+        {/* ── Last 7 Days stats ─────────────────────────────────────────── */}
         <Text style={styles.sectionTitle}>Last 7 Days</Text>
         <View style={styles.statsGrid}>
           <StatCard
@@ -223,7 +549,68 @@ export default function InsightsScreen() {
           </View>
         )}
 
-        {/* Recommendations */}
+        {/* ── Trends ────────────────────────────────────────────────────── */}
+        <View style={styles.trendHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Trends</Text>
+            <Text style={styles.trendSubtitle}>6 cross-layer signals · sparse-aware</Text>
+          </View>
+          <WindowToggle value={windowDays} onChange={setWindowDays} />
+        </View>
+
+        {totalTrendPoints === 0 ? (
+          <View style={styles.trendEmpty}>
+            <Feather name="activity" size={28} color={Colors.light.textMuted} />
+            <Text style={styles.trendEmptyTitle}>No trend data yet</Text>
+            <Text style={styles.trendEmptyBody}>
+              Log your qualitative daily state and quantitative measurements for at least 2 days to start seeing trends.
+            </Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.signalGrid}>
+              {trendSignals.map((signal) => (
+                <SignalCard key={signal.key} signal={signal} />
+              ))}
+            </View>
+
+            {/* Cross-layer interpretations */}
+            {interpretations.length > 0 && (
+              <View style={styles.interpSection}>
+                <View style={styles.interpHeader}>
+                  <Feather name="layers" size={13} color={Colors.light.textMuted} />
+                  <Text style={styles.interpTitle}>Cross-Layer Interpretation</Text>
+                </View>
+                <Text style={styles.interpNote}>
+                  Patterns detected by comparing subjective scores against device data. Two signals agreeing = strong confidence.
+                </Text>
+                <View style={styles.interpList}>
+                  {interpretations.map((interp, i) => (
+                    <InterpretationCard key={i} interp={interp} />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Legend */}
+            <View style={styles.trendLegend}>
+              <View style={styles.trendLegendRow}>
+                <View style={[styles.trendLegendDot, { backgroundColor: Colors.light.structuring }]} />
+                <Text style={styles.trendLegendText}>High confidence (≥5 points)</Text>
+              </View>
+              <View style={styles.trendLegendRow}>
+                <View style={[styles.trendLegendDot, { backgroundColor: Colors.light.amber }]} />
+                <Text style={styles.trendLegendText}>Low confidence (&lt;5 points)</Text>
+              </View>
+              <View style={styles.trendLegendRow}>
+                <View style={styles.trendLegendGap} />
+                <Text style={styles.trendLegendText}>Gap in line = missing day</Text>
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* ── Recommendations ───────────────────────────────────────────── */}
         <View style={styles.recHeader}>
           <Text style={styles.sectionTitle}>Recommendations</Text>
           {activeRecs.length > 0 && (
@@ -281,7 +668,9 @@ const styles = StyleSheet.create({
   },
   refreshText: { fontFamily: "Inter_500Medium", fontSize: 13, color: Colors.light.textSecondary },
   scroll: { paddingHorizontal: 16 },
-  sectionTitle: { fontFamily: "Inter_600SemiBold", fontSize: 16, color: Colors.light.text, marginBottom: 8 },
+  sectionTitle: { fontFamily: "Inter_600SemiBold", fontSize: 16, color: Colors.light.text, marginBottom: 4 },
+
+  // Stats
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
   statCard: {
     flex: 1,
@@ -295,13 +684,15 @@ const styles = StyleSheet.create({
   statValue: { fontFamily: "Inter_700Bold", fontSize: 22, color: Colors.light.text, marginBottom: 2 },
   statLabel: { fontFamily: "Inter_500Medium", fontSize: 12, color: Colors.light.textSecondary },
   statSub: { fontFamily: "Inter_400Regular", fontSize: 10, color: Colors.light.textMuted, marginTop: 2 },
+
+  // Mode
   modeCard: {
     backgroundColor: Colors.light.surface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.light.border,
     padding: 14,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   modeCardTitle: { fontFamily: "Inter_500Medium", fontSize: 12, color: Colors.light.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
   modeRow: { flexDirection: "row", height: 32, borderRadius: 6, overflow: "hidden", gap: 2, marginBottom: 8 },
@@ -311,11 +702,62 @@ const styles = StyleSheet.create({
   modeLegendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   modeDot: { width: 8, height: 8, borderRadius: 4 },
   modeLegendText: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textSecondary },
+
+  // Trends
+  trendHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  trendSubtitle: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textMuted },
+  trendEmpty: {
+    alignItems: "center",
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    gap: 8,
+    marginBottom: 20,
+  },
+  trendEmptyTitle: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: Colors.light.textSecondary },
+  trendEmptyBody: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textMuted, textAlign: "center", lineHeight: 18 },
+  signalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+
+  // Interpretations
+  interpSection: { marginBottom: 14 },
+  interpHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
+  interpTitle: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: Colors.light.textSecondary },
+  interpNote: {
+    fontFamily: "Inter_400Regular", fontSize: 11,
+    color: Colors.light.textMuted, marginBottom: 8, lineHeight: 16,
+  },
+  interpList: { gap: 6 },
+
+  // Trend legend
+  trendLegend: {
+    backgroundColor: Colors.light.creamMid,
+    borderRadius: 8,
+    padding: 10,
+    gap: 5,
+    marginBottom: 20,
+  },
+  trendLegendRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  trendLegendDot: { width: 8, height: 8, borderRadius: 4 },
+  trendLegendGap: {
+    width: 8, height: 2,
+    borderStyle: "dashed", borderWidth: 1,
+    borderColor: Colors.light.textMuted,
+  },
+  trendLegendText: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textMuted },
+
+  // Recs
   recHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
   recCountBadge: {
     backgroundColor: Colors.light.tint,
-    width: 20,
-    height: 20,
+    width: 20, height: 20,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
@@ -339,15 +781,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
     padding: 14,
   },
-  recCardHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 8,
-  },
+  recCardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 8 },
   recIconCircle: {
-    width: 30,
-    height: 30,
+    width: 30, height: 30,
     borderRadius: 8,
     backgroundColor: Colors.light.creamMid,
     alignItems: "center",
