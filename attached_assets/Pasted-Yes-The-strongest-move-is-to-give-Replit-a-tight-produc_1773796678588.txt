@@ -1,0 +1,673 @@
+Yes. The strongest move is to give Replit a tight product brief + data model + decision logic, so it builds the right thing instead of a vague “planner app.”
+
+What you want is not just a schedule app. It is an:
+
+AuDHD Schedule OS
+
+A system that:
+	1.	plans the day,
+	2.	tracks what actually happened,
+	3.	captures subjective neuro-state and sensory/sentiment data,
+	4.	detects mismatch patterns,
+	5.	suggests schedule, meal, cardio, and lifting refinements.
+
+The core idea is:
+
+The schedule is not the truth. The schedule is a hypothesis.
+Actual behavior + felt experience + sensory conditions determine the next better schedule.
+
+⸻
+
+What to tell Replit
+
+Paste this as your main build brief.
+
+Build me a mobile-first web app called “AuDHD Schedule OS.”
+
+Purpose:
+This app is a neurodivergent-aware schedule planner and adaptation system for an adult with ADHD + likely autism traits. It must help me plan an ideal day, log what actually happened, describe how the schedule felt, and then recommend refinements to schedule timing, meal timing, macro distribution, cardio placement, lifting placement, and sensory/environment design.
+
+This is NOT a generic productivity app.
+It is a structured daily operating system that combines:
+- schedule planning
+- schedule adherence tracking
+- subjective neurodivergent sentiment logging
+- sensory/environment tracking
+- energy and overload pattern detection
+- meal timing and repeated-food nutrition support
+- cardio and lifting schedule refinement
+- suggestion engine for future schedule adjustments
+
+Core design philosophy:
+- I have two competing regulators:
+  1. ADHD / Explorer engine = novelty, stimulation, ideation, drift risk
+  2. Autism / Stabilizer engine = structure, predictability, control, overload protection
+- The system should support 3 deliberate phases:
+  1. Expansion
+  2. Structuring
+  3. Recovery
+- The app should help me schedule these phases intentionally, not assume I should feel identical all day.
+- The app should treat sensory needs as real performance variables.
+- The app should value repeated foods, stable routines, and predictable meal structures, while still allowing strategic flexibility.
+
+Primary user goals:
+1. Build a schedule for the day using blocks:
+   - wake
+   - meals
+   - work
+   - commute
+   - cardio
+   - lift
+   - hobby
+   - hygiene
+   - chores
+   - errands
+   - bedtime
+2. Mark what actually happened
+3. Rate how each block felt
+4. Log sensory conditions and emotional friction
+5. Identify whether a block was:
+   - well placed
+   - too early
+   - too late
+   - too long
+   - too short
+   - too stimulating
+   - too unstructured
+   - too rigid
+6. Detect patterns over time
+7. Suggest changes to:
+   - block timing
+   - block duration
+   - order of blocks
+   - macro split by meal
+   - pre/post workout meal placement
+   - cardio/lifting placement
+   - environmental adjustments
+
+Main product modules:
+1. Daily Planner
+2. Actual Day Log
+3. Sentiment + Sensory Log
+4. Nutrition Timing Log
+5. Training Log (cardio/lift placement)
+6. Pattern Engine
+7. Recommendation Engine
+8. Weekly Review Dashboard
+
+Must-have app behavior:
+- Planned schedule and actual schedule must both be stored
+- Each block must support planned start/end and actual start/end
+- App must calculate deviations automatically
+- App must let me score each block for:
+  - ease
+  - resistance
+  - overload
+  - focus
+  - satisfaction
+  - transition difficulty
+- App must let me tag each block by phase:
+  - expansion
+  - structuring
+  - recovery
+- App must let me record sensory notes:
+  - noise
+  - light
+  - texture/clothing discomfort
+  - crowding
+  - pressure/compression helped
+- App must support repeated-food meal templates
+- App must support stable macro targets but allow meal timing refinements
+- App must highlight whether cardio or lifting placement improved or harmed the day
+- App must produce recommendations from accumulated patterns, not just static advice
+
+Build stack:
+- React / Next.js or React + Vite
+- TypeScript
+- clean component architecture
+- local-first storage first, with future Supabase/Postgres support
+- mobile-first UI
+- clean, minimal, low-sensory-load design
+- no clutter
+- charts should be simple and readable
+
+Main screens:
+1. Today
+2. Plan
+3. Log
+4. Meals
+5. Training
+6. Insights
+7. Settings / Templates
+
+Please start by generating:
+1. app architecture
+2. data schema
+3. component tree
+4. suggestion engine rules
+5. local storage persistence layer
+6. first-pass UI for Today, Plan, and Log screens
+7. reusable TypeScript types
+8. seed data examples
+
+
+⸻
+
+What the app should really track
+
+The key is: every block needs both objective and subjective layers.
+
+1. Objective schedule layer
+
+For each block:
+	•	block type
+	•	planned start
+	•	planned end
+	•	actual start
+	•	actual end
+	•	skipped yes/no
+	•	shortened yes/no
+	•	extended yes/no
+
+Derived:
+	•	start deviation
+	•	end deviation
+	•	duration deviation
+	•	absolute deviation
+	•	adherence %
+
+⸻
+
+2. Subjective neurodivergent layer
+
+For each block ask:
+	•	How easy was it to begin?
+	•	How resistant did it feel?
+	•	How mentally noisy did it feel?
+	•	How overstimulating was it?
+	•	How under-structured was it?
+	•	How over-rigid did it feel?
+	•	How satisfying did completion feel?
+	•	How hard was the transition into it?
+	•	Did this block feel better as:
+	•	earlier
+	•	later
+	•	longer
+	•	shorter
+	•	after food
+	•	before food
+	•	after cardio
+	•	after quiet time
+
+That is where the real intelligence comes from.
+
+⸻
+
+Best structure: schedule blocks + state snapshot
+
+You want two linked tables conceptually:
+
+A. daily_blocks
+
+One row per block instance.
+
+Fields:
+	•	date
+	•	block_id
+	•	block_type
+	•	phase_tag (expansion, structuring, recovery)
+	•	planned_start
+	•	planned_end
+	•	actual_start
+	•	actual_end
+	•	status (done, skipped, partial, moved)
+	•	location
+	•	environment_template
+	•	meal_template_id if relevant
+	•	training_template_id if relevant
+
+Subjective:
+	•	start_resistance_1_5
+	•	focus_quality_1_5
+	•	overload_1_5
+	•	transition_difficulty_1_5
+	•	satisfaction_1_5
+	•	felt_too_early_1_5
+	•	felt_too_late_1_5
+	•	felt_too_long_1_5
+	•	felt_too_short_1_5
+	•	felt_too_rigid_1_5
+	•	felt_too_unstructured_1_5
+	•	notes
+
+Derived:
+	•	start_dev_min
+	•	end_dev_min
+	•	duration_dev_min
+	•	adherence_score
+
+⸻
+
+B. daily_state_snapshot
+
+One row per day.
+
+Fields:
+	•	date
+	•	sleep_hours
+	•	sleep_quality_1_5
+	•	sensory_load_baseline_1_5
+	•	social_load_1_5
+	•	motivation_1_5
+	•	mental_fog_1_5
+	•	physical_energy_1_5
+	•	emotional_stability_1_5
+	•	novelty_hunger_1_5
+	•	structure_hunger_1_5
+	•	pressure_seek_1_5
+	•	noise_aversion_1_5
+	•	light_aversion_1_5
+	•	texture_sensitivity_1_5
+
+Derived:
+	•	adhd_pull_score
+	•	autism_pull_score
+	•	recovery_need_score
+	•	recommended_day_mode
+
+Where:
+	•	recommended_day_mode =
+	•	expansion_favoring
+	•	structuring_favoring
+	•	recovery_favoring
+	•	mixed
+
+⸻
+
+The most important decision engine
+
+This is the heart of the whole product.
+
+Instead of asking “was the schedule followed,” ask:
+
+Was the block aligned with my state?
+
+That means each day the app should estimate:
+
+Explorer pull
+
+Higher when:
+	•	novelty hunger high
+	•	boredom high
+	•	restlessness high
+	•	ideation high
+	•	urge to change plan high
+
+Stabilizer pull
+
+Higher when:
+	•	structure hunger high
+	•	sensory sensitivity high
+	•	transition difficulty high
+	•	ambiguity intolerance high
+	•	routine craving high
+
+Recovery pull
+
+Higher when:
+	•	overload high
+	•	sleep poor
+	•	social/sensory burden high
+	•	resistance high across blocks
+	•	drift + shutdown both present
+
+⸻
+
+Suggested daily modes
+
+The app should recommend one of these before planning:
+
+1. Expansion day
+
+Use when explorer pull is high and overload is not too high.
+
+Characteristics:
+	•	idea capture block
+	•	flexible work block
+	•	optional novelty slot
+	•	shorter rigid blocks
+	•	more movement breaks
+
+2. Structuring day
+
+Use when stabilizer pull is high and overload is moderate/manageable.
+
+Characteristics:
+	•	repeated meals
+	•	exact training times
+	•	reduced options
+	•	low-friction errands
+	•	fewer transitions
+	•	checklist-driven work
+
+3. Recovery day
+
+Use when overload or shutdown risk is high.
+
+Characteristics:
+	•	protected wake and bedtime
+	•	repeated safe foods
+	•	stripped-down to essentials
+	•	low sensory errands or none
+	•	easier cardio, maybe Zone 2
+	•	lifting only if restorative, not heroic
+
+⸻
+
+Nutrition logic you want Replit to support
+
+You are not looking for infinite meal variety. You want stable templates + adaptive timing.
+
+So tell Replit to build:
+
+Meal templates
+
+Each template stores:
+	•	meal name
+	•	ingredients
+	•	grams
+	•	macros
+	•	texture category
+	•	prep demand
+	•	sensory comfort level
+	•	portability
+	•	digestion heaviness
+	•	sameness / predictability score
+
+Example:
+	•	Meal 1: oat flour + whey + MCT
+	•	Meal 2: Greek yogurt + flax + whey
+	•	Meal 3: cyclic dextrin + whey
+	•	Meal 4: evening oats + eggs + banana
+
+What the app should learn
+
+For each meal, ask:
+	•	easy to eat?
+	•	delayed too long?
+	•	too heavy before training?
+	•	too light after training?
+	•	felt grounding?
+	•	caused avoidance?
+	•	better earlier/later?
+
+Then let the app suggest:
+	•	move Meal 1 earlier by 20 min
+	•	reduce pre-lift fiber/fat
+	•	make post-cardio meal more automatic
+	•	keep same foods but shift meal 3 closer to lift
+
+That is much better than “eat different foods.”
+
+⸻
+
+Cardio and lifting logic
+
+The app should not only track if you trained. It should track whether the placement worked.
+
+For cardio:
+	•	planned time
+	•	actual time
+	•	duration
+	•	intensity
+	•	before/after food
+	•	effect on later focus
+	•	effect on appetite
+	•	effect on sensory calm
+	•	effect on lift performance later
+
+For lift:
+	•	planned time
+	•	actual time
+	•	duration
+	•	pre-lift meal timing
+	•	post-lift meal timing
+	•	motivation before
+	•	resistance before
+	•	satisfaction after
+	•	later fatigue cost
+	•	bedtime impact
+
+Then the app can discover patterns like:
+	•	lifting after too many errands causes high resistance
+	•	cardio early improves structure for the whole day
+	•	late lifting harms bedtime consistency
+	•	pre-lift carbs 45–60 min prior work better than 15 min prior
+
+⸻
+
+Sensory-aware environment module
+
+This is crucial for you.
+
+Each block should optionally log:
+	•	noise level
+	•	visual clutter
+	•	crowd density
+	•	clothing comfort
+	•	temperature discomfort
+	•	deep pressure/compression helpful yes/no
+	•	headphones used yes/no
+	•	sunglasses/hat used yes/no
+	•	rushed exposure yes/no
+
+Then recommendations can include:
+	•	do errands only in protected low-crowd windows
+	•	use compression/weighted/soft clothing before stores
+	•	put recovery block after public exposure
+	•	avoid chaotic environment before lift
+
+⸻
+
+What the weekly review should say
+
+The weekly review should sound like a coach, not a productivity app.
+
+It should answer:
+
+Schedule fit
+	•	Which blocks were consistently mistimed?
+	•	Which transitions were hardest?
+	•	Which blocks had the highest resistance?
+
+Neuro-fit
+	•	Were you craving more novelty or more structure this week?
+	•	Were you trying to force structure on expansion days?
+	•	Were you allowing too much drift on structuring days?
+
+Sensory fit
+	•	Which environments raised overload most?
+	•	Which adjustments reduced friction?
+
+Nutrition fit
+	•	Which meals were most reliable?
+	•	Which meal timings improved training and calm?
+
+Training fit
+	•	When did cardio stabilize the day?
+	•	When did lifting feel most sustainable?
+
+Recommendation summary
+	•	Keep
+	•	Shift
+	•	Reduce
+	•	Protect
+	•	Experiment
+
+⸻
+
+The exact kinds of recommendations it should generate
+
+Have Replit implement outputs like:
+	•	“Your work block shows repeated high start resistance before eating. Try moving Meal 1 earlier by 20–30 minutes.”
+	•	“Errands after lifting are associated with high overload and rushed store behavior. Move errands to a separate low-sensory window.”
+	•	“Days tagged as structuring showed better adherence when meals repeated exactly and hobby blocks were removed.”
+	•	“You seem to tolerate cardio best when it occurs before the main work block and after hydration.”
+	•	“Recovery days still contain too many transitions. Reduce total block count from 9 to 6 on high-overload days.”
+	•	“Your lift adherence is highest when pre-lift carbs occur 45–75 minutes before training.”
+	•	“Noise-heavy public environments are followed by reduced schedule adherence. Insert a 15-minute sensory reset after errands.”
+
+⸻
+
+Strong app architecture
+
+Tell Replit to use something like this:
+
+Frontend
+	•	React + TypeScript
+	•	Tailwind for clean UI
+	•	Zustand or Redux Toolkit for state
+	•	React Hook Form for forms
+	•	localStorage or IndexedDB first
+
+Data model folders
+	•	types/
+	•	data/
+	•	store/
+	•	lib/
+	•	engine/
+	•	components/
+	•	screens/
+
+Core logic folders
+	•	engine/schedule.ts
+	•	engine/stateScoring.ts
+	•	engine/recommendations.ts
+	•	engine/nutrition.ts
+	•	engine/training.ts
+	•	engine/sensory.ts
+
+⸻
+
+The best initial screens
+
+1. Today screen
+
+Shows:
+	•	today’s mode: Expansion / Structuring / Recovery
+	•	planned blocks
+	•	current block
+	•	next block
+	•	friction warning
+	•	meal timing reminders
+	•	training placement reminders
+
+2. Plan screen
+
+Build the day with templates.
+
+3. Log screen
+
+Quickly record:
+	•	actual times
+	•	skipped/done
+	•	friction ratings
+	•	sensory conditions
+	•	note
+
+4. Insights screen
+
+Weekly pattern summary and suggestions.
+
+⸻
+
+Best prompt for Replit after the brief
+
+After it scaffolds, give it this:
+
+Now build version 1 with these priorities only:
+
+Priority 1
+- local-first storage
+- create/edit daily schedule blocks
+- planned vs actual times
+- block phase tag: expansion / structuring / recovery
+- quick subjective ratings per block
+- daily state snapshot
+- automatic deviation calculations
+
+Priority 2
+- meal templates with repeated-food support
+- training timing support for cardio and lifting
+- simple recommendation engine
+
+Priority 3
+- weekly review dashboard
+- pattern summaries
+- environment and sensory correlation summaries
+
+For version 1, optimize for low-friction logging and simple insights, not complexity.
+Do not overbuild the UI.
+Make the experience feel calm, structured, and easy to use.
+
+
+⸻
+
+If you want the app to feel truly intelligent
+
+Add this rule:
+
+Recommendations must be conservative.
+The app should prefer:
+- small timing shifts
+- fewer blocks on overload days
+- repeated meals before novel meals
+- protected recovery before adding optimization
+- pattern-backed suggestions only
+
+That will prevent it from becoming chaotic.
+
+⸻
+
+My recommendation for your v1 feature set
+
+Do not start with everything. Start with these:
+
+v1
+	•	daily planner
+	•	actual log
+	•	friction/sensory ratings
+	•	daily mode scoring
+	•	meal timing
+	•	cardio/lift timing
+	•	weekly recommendations
+
+v2
+	•	macro adjustment suggestions
+	•	template cloning
+	•	streaks by block type
+	•	better charts
+	•	experimentation engine
+
+v3
+	•	adaptive auto-scheduling
+	•	predictive overload warnings
+	•	smarter nutrition timing logic
+	•	wearable integrations
+
+⸻
+
+One more thing: the most important conceptual rule
+
+Tell Replit this explicitly:
+
+The app should not assume “better adherence” always means “better schedule.”
+Sometimes low adherence means the schedule was mismatched to neuro-state.
+The engine must distinguish:
+- discipline failure
+from
+- state/sensory/schedule mismatch
+
+That is probably the single most important principle in the whole system.
+
+If you want, next I can turn this into a clean Replit-ready master spec with headings, schema tables, and v1 pseudocode that you can paste in as one document.

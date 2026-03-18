@@ -1,0 +1,93 @@
+Good. Before you go further, lock these rules:
+
+1. Distinguish 3 separate concepts:
+- schedule phase tags = expansion / structuring / recovery
+- nutrition regime ids = base, carbup, carbcut, fatcut, recomp, deload, dietbreak, peakbulk
+- orbital physiology phases = priming, loading, accumulation, saturation, partitioning, resensitization, rebound, expression
+
+These are NOT the same field.
+
+2. Do not collapse my nutrition regime ids directly into orbital physiology phases.
+Instead use a translator table with:
+- nutrition_phase_id
+- orbital_phase_primary
+- orbital_phase_secondary
+
+3. Also do not treat meal_template_id as the same thing as nutrition_phase_id.
+meal_template_id should parse into:
+- nutrition_phase_id
+- meal_slot
+
+Example:
+base_precardio =>
+- nutrition_phase_id = base
+- meal_slot = precardio
+
+4. Build these core tables first:
+
+A. nutrition_phases
+- phase_id
+- phase_name
+- description
+
+B. orbital_phases
+- orbital_phase_id
+- orbital_phase_name
+- orbital_order
+- description
+
+C. nutrition_to_orbital_map
+- nutrition_phase_id
+- orbital_phase_primary
+- orbital_phase_secondary
+- notes
+
+D. meal_slot_defs
+- meal_slot
+- slot_order
+- label
+- description
+
+E. meal_templates
+- meal_template_id
+- nutrition_phase_id
+- meal_slot
+- line_no
+- ingredient_id
+- amount_unit
+- prep_note
+- kcal_line
+- protein_line
+- carbs_line
+- fat_line
+
+5. Use this nutrition-to-orbital translation table:
+
+- base -> expression | priming
+- carbup -> loading | accumulation
+- carbcut -> partitioning | resensitization
+- fatcut -> partitioning | resensitization
+- recomp -> partitioning | expression
+- deload -> resensitization | priming
+- dietbreak -> rebound | expression
+- peakbulk -> saturation | accumulation
+
+6. Canonical meal slots:
+- precardio
+- postcardio
+- midmorning
+- prelift
+- postlift
+- evening
+- proteinreserve
+
+7. Keep subsystem phases separate in the app:
+- daily_schedule_mode = expansion / structuring / recovery
+- nutrition_phase_id = my current nutrition regime
+- orbital_phase = physiology interpretation layer
+- later we may also add sleep_phase and training_phase
+
+8. Do not assume better adherence always means a better schedule.
+A mismatch may reflect sensory overload, wrong block timing, wrong food timing, or wrong state-fit.
+
+9. For v1, prioritize data integrity and logging simplicity over visual complexity.

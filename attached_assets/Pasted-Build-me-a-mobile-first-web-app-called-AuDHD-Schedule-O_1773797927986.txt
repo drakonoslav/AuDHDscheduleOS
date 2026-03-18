@@ -1,0 +1,127 @@
+Build me a mobile-first web app called “AuDHD Schedule OS.”
+
+Purpose:
+This app is a neurodivergent-aware schedule planner and adaptation system for an adult with ADHD + likely autism traits. It must help me plan an ideal day, log what actually happened, describe how the schedule felt, and then recommend refinements to schedule timing, meal timing, macro distribution, cardio placement, lifting placement, and sensory/environment design.
+
+This is NOT a generic productivity app.
+It is a structured daily operating system that combines:
+- schedule planning
+- schedule adherence tracking
+- subjective neurodivergent sentiment logging
+- sensory/environment tracking
+- energy and overload pattern detection
+- meal timing and repeated-food nutrition support
+- cardio and lifting schedule refinement
+- suggestion engine for future schedule adjustments
+
+Core design philosophy:
+- I have two competing regulators:
+  1. ADHD / Explorer engine = novelty, stimulation, ideation, drift risk
+  2. Autism / Stabilizer engine = structure, predictability, control, overload protection
+- The system should support 3 deliberate phases:
+  1. Expansion
+  2. Structuring
+  3. Recovery
+- The app should help me schedule these phases intentionally, not assume I should feel identical all day.
+- The app should treat sensory needs as real performance variables.
+- The app should value repeated foods, stable routines, and predictable meal structures, while still allowing strategic flexibility.
+
+Primary user goals:
+1. Build a schedule for the day using blocks:
+   - wake
+   - meals
+   - work
+   - commute
+   - cardio
+   - lift
+   - hobby
+   - hygiene
+   - chores
+   - errands
+   - bedtime
+2. Mark what actually happened
+3. Rate how each block felt
+4. Log sensory conditions and emotional friction
+5. Identify whether a block was:
+   - well placed
+   - too early
+   - too late
+   - too long
+   - too short
+   - too stimulating
+   - too unstructured
+   - too rigid
+6. Detect patterns over time
+7. Suggest changes to:
+   - block timing
+   - block duration
+   - order of blocks
+   - macro split by meal
+   - pre/post workout meal placement
+   - cardio/lifting placement
+   - environmental adjustments
+
+Main product modules:
+1. Daily Planner
+2. Actual Day Log
+3. Sentiment + Sensory Log
+4. Nutrition Timing Log
+5. Training Log (cardio/lift placement)
+6. Pattern Engine
+7. Recommendation Engine
+8. Weekly Review Dashboard
+
+Must-have app behavior:
+- Planned schedule and actual schedule must both be stored
+- Each block must support planned start/end and actual start/end
+- App must calculate deviations automatically
+- App must let me score each block for:
+  - ease
+  - resistance
+  - overload
+  - focus
+  - satisfaction
+  - transition difficulty
+- App must let me tag each block by phase:
+  - expansion
+  - structuring
+  - recovery
+- App must let me record sensory notes:
+  - noise
+  - light
+  - texture/clothing discomfort
+  - crowding
+  - pressure/compression helped
+- App must support repeated-food meal templates
+- App must support stable macro targets but allow meal timing refinements
+- App must highlight whether cardio or lifting placement improved or harmed the day
+- App must produce recommendations from accumulated patterns, not just static advice
+
+Build stack:
+- React / Next.js or React + Vite
+- TypeScript
+- clean component architecture
+- local-first storage first, with future Supabase/Postgres support
+- mobile-first UI
+- clean, minimal, low-sensory-load design
+- no clutter
+- charts should be simple and readable
+
+Main screens:
+1. Today
+2. Plan
+3. Log
+4. Meals
+5. Training
+6. Insights
+7. Settings / Templates
+
+Please start by generating:
+1. app architecture
+2. data schema
+3. component tree
+4. suggestion engine rules
+5. local storage persistence layer
+6. first-pass UI for Today, Plan, and Log screens
+7. reusable TypeScript types
+8. seed data examples

@@ -1,0 +1,236 @@
+Yes — but this is not a perfect 1-to-1 translation.
+
+Your current set:
+	•	base
+	•	carbup
+	•	carbcut
+	•	fatcut
+	•	recomp
+	•	deload
+	•	dietbreak
+	•	peakbulk
+
+are mostly nutrition regime labels,
+
+while the new set:
+	•	Priming
+	•	Loading
+	•	Accumulation
+	•	Saturation
+	•	Partitioning
+	•	Resensitization
+	•	Rebound
+	•	Expression
+
+are control-state / physiology-phase labels.
+
+So the right way to translate them is:
+	•	give each old label a best-fit orbital phase
+	•	and sometimes a secondary nearest phase
+
+Best-fit translation
+
+old phase_id	old meaning	best-fit orbital phase	secondary fit
+base	standard bulk baseline	Expression	Priming
+carbup	high carb push	Loading	Accumulation
+carbcut	carb reduction	Partitioning	Resensitization
+fatcut	fat reduction	Partitioning	Resensitization
+recomp	slow recomposition	Partitioning	Expression
+deload	recovery nutrition	Resensitization	Priming
+dietbreak	metabolic reset	Rebound	Expression
+peakbulk	aggressive growth	Saturation	Accumulation
+
+Why each one maps that way
+
+base → Expression
+
+Base is your stabilized operating baseline:
+	•	not pushing hard
+	•	not cutting hard
+	•	not resetting hard
+
+That sounds most like:
+
+Expression = system stabilized at higher baseline
+
+Secondary fit is Priming if you want base to mean “ready, calm, baseline readiness,” but overall Expression is better.
+
+⸻
+
+carbup → Loading
+
+Carb-up means:
+	•	fuel increase
+	•	rising training support
+	•	more tension support
+	•	more input pressure
+
+That fits:
+
+Loading = force production rising
+
+If carb-up becomes very aggressive and sustained, it can drift toward Accumulation.
+
+⸻
+
+peakbulk → Saturation
+
+Peak bulk is your most aggressive growth push:
+	•	highest carb pressure
+	•	highest surplus
+	•	strongest hypertrophy drive
+	•	highest fatigue/fat-gain risk
+
+That is closest to:
+
+Saturation = maximum cellular stress
+
+Secondary fit: Accumulation if you want a slightly less extreme interpretation.
+
+⸻
+
+recomp → Partitioning
+
+Recomp is not mainly about max input.
+It is about:
+	•	routing nutrients well
+	•	preserving/building muscle while controlling fat
+	•	efficient allocation
+
+That is almost exactly:
+
+Partitioning = direct nutrients toward muscle vs fat
+
+Secondary fit: Expression, since recomp can also feel like a stable, controlled state.
+
+⸻
+
+carbcut → Partitioning
+
+Carb cut means:
+	•	less fuel availability
+	•	more careful allocation
+	•	less “push,” more routing control
+
+So it fits:
+
+Partitioning
+
+If carb reduction is substantial and meant to restore responsiveness, it moves toward Resensitization.
+
+⸻
+
+fatcut → Partitioning
+
+Same logic as carbcut, but even more clearly:
+	•	this is an allocation/routing regime
+	•	reduce excess storage pressure
+	•	improve nutrient direction
+
+Best fit is again:
+
+Partitioning
+
+Secondary fit: Resensitization if the cut is also functioning as a reset phase.
+
+⸻
+
+deload → Resensitization
+
+This is the cleanest one.
+
+Deload means:
+	•	reduced strain
+	•	restored sensitivity
+	•	restored CNS and tissue response
+	•	technique and recovery emphasis
+
+That is directly:
+
+Resensitization
+
+Secondary fit: Priming, because once recovery happens the system becomes ready again.
+
+⸻
+
+dietbreak → Rebound
+
+Diet break is not just “eating more.”
+Its role is usually:
+	•	relieve adaptive suppression
+	•	restore performance
+	•	restore output
+	•	reduce chronic deficit drag
+
+That best fits:
+
+Rebound = supercompensation expression
+
+Secondary fit: Expression if you use diet break more as stabilization than recovery surge.
+
+⸻
+
+The cleanest final ownership map
+
+If you want a single forced translation table, I would use this:
+
+current phase_id	orbital phase
+base	expression
+carbup	loading
+carbcut	partitioning
+fatcut	partitioning
+recomp	partitioning
+deload	resensitization
+dietbreak	rebound
+peakbulk	saturation
+
+The only awkward part
+
+This leaves:
+	•	Priming
+	•	Accumulation
+
+without direct old-label equivalents.
+
+That is because your old system is regime-oriented, not fully cyclical.
+
+Those two are “missing” because:
+	•	Priming is more of an entry/readiness state than a diet label
+	•	Accumulation is more of a stimulus-build state than a broad nutrition label
+
+Best inferred additions
+
+If you want to conceptually place them:
+	•	Priming = pre-base / entry into build
+	•	Accumulation = late carbup / early peakbulk bridge
+
+So a fuller orbital progression from your current labels would be:
+	1.	Priming → not explicitly represented
+	2.	Loading → carbup
+	3.	Accumulation → between carbup and peakbulk
+	4.	Saturation → peakbulk
+	5.	Partitioning → recomp / carbcut / fatcut
+	6.	Resensitization → deload
+	7.	Rebound → dietbreak
+	8.	Expression → base
+
+That is probably the most elegant translation.
+
+My recommendation for the app
+
+Do not overwrite your current phase_id table.
+Instead create a translator table like this:
+
+phase_id	orbital_phase_primary	orbital_phase_secondary
+base	expression	priming
+carbup	loading	accumulation
+carbcut	partitioning	resensitization
+fatcut	partitioning	resensitization
+recomp	partitioning	expression
+deload	resensitization	priming
+dietbreak	rebound	expression
+peakbulk	saturation	accumulation
+
+That preserves your current working language while letting the app operate in the newer circular model.
+
+If you want, I can next give you this as a ready-to-paste CSV plus TypeScript lookup object.

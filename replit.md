@@ -91,6 +91,34 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
 
+### `artifacts/mobile` (`@workspace/mobile`)
+
+Expo React Native mobile app — AuDHD Schedule OS. A local-first, neurodivergent-aware daily operating system.
+
+**Three strictly separate concept layers (never collapsed into each other):**
+1. `SchedulePhaseTag` — schedule block tags only: `expansion | structuring | recovery`
+2. `NutritionPhaseId` — dietary regime: `base | carbup | carbcut | fatcut | recomp | deload | dietbreak | peakbulk`
+3. `OrbitalPhaseId` — physiological interpretation layer: `priming | loading | accumulation | saturation | partitioning | resensitization | rebound | expression`
+
+**Nutrition → Orbital translation table** (`data/nutritionToOrbitalMap.ts`): `base→expression/priming`, `carbup→loading/accumulation`, `carbcut→partitioning/resensitization`, `fatcut→partitioning/resensitization`, `recomp→partitioning/expression`, `deload→resensitization/priming`, `dietbreak→rebound/expression`, `peakbulk→saturation/accumulation`
+
+**meal_template_id format:** `{nutritionPhaseId}_{mealSlot}` — e.g. `base_precardio` → `parseMealTemplateId()` splits it
+
+**Key files:**
+- `types/index.ts` — all types with clean layer separation documented
+- `data/nutritionPhases.ts`, `data/orbitalPhases.ts`, `data/nutritionToOrbitalMap.ts`
+- `data/mealSlotDefs.ts` — 7 canonical slots (precardio/postcardio/midmorning/prelift/postlift/evening/proteinreserve)
+- `data/mealTemplates.ts` — compiled templates for base/carbup/recomp/deload phases with per-line ingredient data
+- `data/ingredients.ts` — 8 ingredients: MCT, FLAX, OAT, DEXTRIN, WHEY, YOGURT, BANANA, EGG
+- `context/AppContext.tsx` — full CRUD for blocks/snapshots/training logs
+- `storage/storage.ts` — AsyncStorage persistence, deviation calculator, day score calculator
+- `engine/recommendations.ts` — conservative pattern-backed recommendation engine (≥3 data points required)
+- `app/(tabs)/` — 5 tabs: Today, Plan, Log, Meals, Insights
+
+**Recommendation engine rules:** pattern-backed only (≥3 points), small timing shifts, distinguishes discipline failure vs state/schedule mismatch, protects recovery before optimization. Better adherence ≠ better schedule.
+
+**Storage:** local-first with AsyncStorage, no backend. IDs use `Date.now().toString() + Math.random()`.
+
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.

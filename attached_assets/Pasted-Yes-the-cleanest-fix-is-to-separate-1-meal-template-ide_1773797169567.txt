@@ -1,0 +1,416 @@
+Yes — the cleanest fix is to separate:
+	1.	meal template identity
+	2.	meal slot timing identity
+	3.	phase identity
+
+Right now your meal names are partly doing all 3 jobs at once.
+
+base_precardio is simultaneously saying:
+	•	this is a base plan
+	•	it happens before cardio
+	•	it is a specific meal slot
+
+That makes translation to your 8 phases messy.
+
+Best solution
+
+Use a translator layer with three fields:
+	•	plan_family
+	•	meal_slot
+	•	phase_id
+
+Instead of treating base_precardio as the final name, parse it into structured meaning.
+
+⸻
+
+Recommended structure
+
+A. Keep your current template IDs if you want
+
+Examples:
+	•	base_precardio
+	•	base_postcardio
+	•	base_midmorning
+	•	base_prelift
+	•	base_postlift
+	•	base_evening
+
+and
+	•	carbup_precardio
+	•	carbup_postcardio
+	•	carbup_midmorning
+	•	carbup_prelift
+	•	carbup_postlift
+	•	carbup_evening
+
+B. Add a translator table
+
+This is the missing layer.
+
+meal_template_phase_map.csv
+
+meal_template_id	plan_family	meal_slot	default_phase	alt_phase	slot_order
+base_precardio	base	precardio	priming	resensitization	1
+base_postcardio	base	postcardio	priming	loading	2
+base_midmorning	base	midmorning	partitioning	expression	3
+base_prelift	base	prelift	loading	rebound	4
+base_postlift	base	postlift	accumulation	rebound	5
+base_evening	base	evening	resensitization	expression	6
+carbup_precardio	carbup	precardio	priming	loading	1
+carbup_postcardio	carbup	postcardio	loading	accumulation	2
+carbup_midmorning	carbup	midmorning	accumulation	saturation	3
+carbup_prelift	carbup	prelift	loading	saturation	4
+carbup_postlift	carbup	postlift	accumulation	rebound	5
+carbup_evening	carbup	evening	saturation	expression	6
+
+This lets you keep your practical meal names while also mapping them into phase logic.
+
+⸻
+
+Why this is the right geometry
+
+Your meals are not phases themselves.
+
+They are better understood as:
+	•	slots
+	•	which have phase tendencies
+	•	within a larger plan family
+
+So:
+	•	precardio is a slot
+	•	base or carbup is the nutritional regime
+	•	priming, loading, etc. is the physiological interpretation
+
+That is much cleaner.
+
+⸻
+
+Strongest naming system
+
+I would standardize the slot names first.
+
+Slot names
+
+Use these six canonical slots:
+	•	precardio
+	•	postcardio
+	•	midmorning
+	•	prelift
+	•	postlift
+	•	evening
+
+Then let the translator assign each slot a phase tendency depending on the regime.
+
+⸻
+
+Suggested phase translation by meal slot
+
+Here is the cleanest first-pass mapping.
+
+Universal slot meaning
+
+1. precardio → Priming
+
+Because it is light, activating, and low-burden.
+
+Example:
+	•	banana
+
+This is clearly:
+	•	readiness
+	•	wake-up
+	•	low digestive drag
+	•	movement preparation
+
+2. postcardio → Priming or Loading
+
+Because it begins substrate restoration and sets the day.
+
+Your oat + whey + MCT meal is still pretty controlled, so in base mode it leans Priming.
+In carb-up mode it leans more Loading.
+
+3. midmorning → Partitioning or Expression
+
+This is more of a stabilizing anchor meal.
+It is not explosive.
+It helps keep the day routed correctly.
+
+Your yogurt + flax + whey meal feels like:
+	•	steady
+	•	controlled
+	•	not highly anabolic-spiky
+	•	routing/maintenance oriented
+
+So default lean:
+	•	Partitioning
+
+4. prelift → Loading
+
+This one is the easiest.
+It is explicit fuel input before major tension work.
+
+Dextrin + whey is almost a pure loading signal.
+
+5. postlift → Accumulation or Rebound
+
+This depends on how you define the window.
+
+I would treat immediate postlift nutrition as:
+	•	Accumulation if the emphasis is absorbing the training burden
+	•	Rebound if the emphasis is supercompensation recovery
+
+For your system, defaulting it to Accumulation is cleaner, because it belongs to the stimulus block before the later recovery arc resolves.
+
+6. evening → Resensitization or Expression
+
+Your evening meal is restorative and grounding:
+	•	eggs
+	•	flax
+	•	MCT
+	•	oats
+	•	banana
+
+That leans:
+	•	nervous system settling
+	•	overnight restoration
+	•	replenishment without acute performance demand
+
+So default:
+	•	Resensitization
+
+⸻
+
+Clean base-plan translation
+
+Base plan
+
+meal_slot	default phase
+precardio	priming
+postcardio	priming
+midmorning	partitioning
+prelift	loading
+postlift	accumulation
+evening	resensitization
+
+This is a very coherent “baseline hypertrophy maintenance” arc.
+
+⸻
+
+Clean carb-up translation
+
+Your carb-up version shifts more toward the stimulus half of the wheel.
+
+Carb-up plan
+
+meal_slot	default phase
+precardio	priming
+postcardio	loading
+midmorning	accumulation
+prelift	loading
+postlift	rebound
+evening	saturation
+
+Why evening becomes closer to saturation in carb-up:
+	•	more total fuel pressure
+	•	fuller glycogen state
+	•	more “system loaded” tone
+
+If that feels too aggressive semantically, then make carb-up evening:
+	•	expression instead of saturation
+
+That is probably more emotionally stable for app language.
+
+So the softer carb-up mapping becomes:
+
+meal_slot	default phase
+precardio	priming
+postcardio	loading
+midmorning	accumulation
+prelift	loading
+postlift	rebound
+evening	expression
+
+I prefer this softer version.
+
+⸻
+
+Best practical recommendation
+
+Use slot-based translation, not one rigid permanent phase per meal.
+
+Because a prelift meal in:
+	•	base mode
+	•	carb-up mode
+	•	deload mode
+
+does not mean exactly the same thing physiologically.
+
+So your translator should support:
+	•	default_phase
+	•	contextual_phase
+
+⸻
+
+Strong schema for Replit
+
+meal_templates
+
+Stores ingredients and macros.
+
+field
+meal_template_id
+plan_family
+meal_slot
+line_no
+ingredient_id
+amount_unit
+prep_note
+kcal_line
+protein_line
+carbs_line
+fat_line
+
+meal_slot_defs
+
+Defines slot meaning.
+
+meal_slot	slot_order	label	description
+precardio	1	Pre-Cardio	light activation fuel
+postcardio	2	Post-Cardio	recovery and substrate reset
+midmorning	3	Mid-Morning	stable anchor meal
+prelift	4	Pre-Lift	training fuel
+postlift	5	Post-Lift	training recovery feed
+evening	6	Evening	grounding and overnight support
+
+phase_translation_rules
+
+This is the actual translator.
+
+plan_family	meal_slot	default_phase	alternate_phase	confidence
+base	precardio	priming	resensitization	0.95
+base	postcardio	priming	loading	0.75
+base	midmorning	partitioning	expression	0.65
+base	prelift	loading	rebound	0.95
+base	postlift	accumulation	rebound	0.85
+base	evening	resensitization	expression	0.85
+carbup	precardio	priming	loading	0.85
+carbup	postcardio	loading	accumulation	0.85
+carbup	midmorning	accumulation	partitioning	0.70
+carbup	prelift	loading	saturation	0.95
+carbup	postlift	rebound	accumulation	0.90
+carbup	evening	expression	saturation	0.70
+
+
+⸻
+
+Parsing rule for your existing IDs
+
+Your IDs can be machine-parsed easily.
+
+Example
+
+base_postlift
+
+becomes:
+	•	plan_family = base
+	•	meal_slot = postlift
+
+Replit prompt
+
+Paste this:
+
+Implement a translator for meal_template_id values.
+
+Rule:
+meal_template_id is formatted as:
+{plan_family}_{meal_slot}
+
+Examples:
+- base_precardio
+- base_postcardio
+- carbup_prelift
+- carbup_evening
+
+Create a parser that extracts:
+- plan_family
+- meal_slot
+
+Then map the parsed values to a physiological phase using a lookup table:
+phase_translation_rules
+
+Do not hardcode phase labels inside the meal rows themselves.
+Use the translator table so that meal identity, meal timing slot, and phase meaning stay separate.
+
+
+⸻
+
+Even better naming long term
+
+If you want even cleaner IDs, I would eventually rename templates like this:
+	•	base_slot_01_precardio
+	•	base_slot_02_postcardio
+	•	base_slot_03_midmorning
+	•	base_slot_04_prelift
+	•	base_slot_05_postlift
+	•	base_slot_06_evening
+
+and same for carb-up.
+
+That gives you:
+	•	stable order
+	•	readable meaning
+	•	easy parsing
+
+⸻
+
+My recommended final mapping for now
+
+This is the version I’d actually use.
+
+Base
+	•	base_precardio → priming
+	•	base_postcardio → priming
+	•	base_midmorning → partitioning
+	•	base_prelift → loading
+	•	base_postlift → accumulation
+	•	base_evening → resensitization
+
+Carb-up
+	•	carbup_precardio → priming
+	•	carbup_postcardio → loading
+	•	carbup_midmorning → accumulation
+	•	carbup_prelift → loading
+	•	carbup_postlift → rebound
+	•	carbup_evening → expression
+
+That gives you a believable arc without forcing one meal to equal one eternal phase in all contexts.
+
+⸻
+
+Small but important insight
+
+Your sleep phases and meal phases do not have to align one-to-one.
+
+They should align as:
+	•	parallel interpreters of the same day-state
+
+Meaning:
+	•	sleep may classify the day as resensitization
+	•	nutrition may be deployed in a loading pattern
+	•	training may still sit in accumulation
+
+That is not a bug. That is actually richer and more biologically believable.
+
+So I would avoid trying to force every subsystem to one identical label all the time.
+
+Instead, use:
+	•	sleep_phase
+	•	nutrition_phase
+	•	training_phase
+	•	day_master_phase
+
+Then the app can reason about cross-system mismatch.
+
+⸻
+
+I can next turn this into a ready-to-paste CSV lookup table plus TypeScript translator code for Replit.
