@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { PhaseClassifier, PhaseAxes, derivePhaseTag } from "@/components/ui/PhaseClassifier";
 import { PhaseTag } from "@/components/ui/PhaseTag";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
@@ -25,9 +26,9 @@ const BLOCK_TYPES: BlockType[] = [
   "hobby", "hygiene", "chores", "errands", "bedtime", "rest", "other",
 ];
 
-const PHASE_TAGS: SchedulePhaseTag[] = ["expansion", "structuring", "recovery"];
-
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const DEFAULT_AXES: PhaseAxes = { novelty: 2, structure: 3, recovery: 2 };
 
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substring(2, 7);
@@ -38,7 +39,7 @@ function generateId() {
 interface BlockFormData {
   label: string;
   blockType: BlockType;
-  phaseTag: SchedulePhaseTag;
+  axes: PhaseAxes;
   plannedStart: string;
   plannedEnd: string;
   notes: string;
@@ -47,7 +48,7 @@ interface BlockFormData {
 const DEFAULT_FORM: BlockFormData = {
   label: "",
   blockType: "work",
-  phaseTag: "structuring",
+  axes: DEFAULT_AXES,
   plannedStart: "09:00",
   plannedEnd: "10:00",
   notes: "",
@@ -73,7 +74,7 @@ function AddBlockModal({ visible, onClose, onAdd, date }: {
       date,
       blockType: form.blockType,
       label: form.label.trim(),
-      phaseTag: form.phaseTag,
+      phaseTag: derivePhaseTag(form.axes),
       plannedStart: form.plannedStart,
       plannedEnd: form.plannedEnd,
       status: "planned",
@@ -123,20 +124,10 @@ function AddBlockModal({ visible, onClose, onAdd, date }: {
           </ScrollView>
 
           <Text style={styles.fieldLabel}>Schedule Phase</Text>
-          <View style={styles.phaseRow}>
-            {PHASE_TAGS.map((p) => (
-              <Pressable
-                key={p}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setForm((f) => ({ ...f, phaseTag: p }));
-                }}
-                style={[styles.phaseChip, form.phaseTag === p && styles.phaseChipSelected]}
-              >
-                <PhaseTag phase={p} small />
-              </Pressable>
-            ))}
-          </View>
+          <PhaseClassifier
+            axes={form.axes}
+            onChange={(axes) => setForm((f) => ({ ...f, axes }))}
+          />
 
           <View style={styles.timeRow}>
             <View style={styles.timeField}>
@@ -191,7 +182,7 @@ function AddBlockModal({ visible, onClose, onAdd, date }: {
 interface TemplateFormData {
   label: string;
   blockType: BlockType;
-  phaseTag: SchedulePhaseTag;
+  axes: PhaseAxes;
   startTime: string;
   endTime: string;
   daysOfWeek: number[];
@@ -201,12 +192,20 @@ interface TemplateFormData {
 const DEFAULT_TEMPLATE_FORM: TemplateFormData = {
   label: "",
   blockType: "work",
-  phaseTag: "structuring",
+  axes: DEFAULT_AXES,
   startTime: "09:00",
   endTime: "10:00",
   daysOfWeek: [1, 2, 3, 4, 5],
   notes: "",
 };
+
+// When editing an existing template, we have phaseTag but no stored axes.
+// Map it to a coherent starting point so the sliders reflect the tag.
+function axesFromPhaseTag(tag: SchedulePhaseTag): PhaseAxes {
+  if (tag === "expansion") return { novelty: 4, structure: 2, recovery: 2 };
+  if (tag === "recovery")  return { novelty: 1, structure: 2, recovery: 4 };
+  return { novelty: 2, structure: 4, recovery: 2 }; // structuring
+}
 
 function TemplateFormModal({
   visible,
@@ -245,7 +244,7 @@ function TemplateFormModal({
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onSave(form);
+    onSave({ ...form, label: form.label.trim() });
     onClose();
   };
 
@@ -286,17 +285,10 @@ function TemplateFormModal({
           </ScrollView>
 
           <Text style={styles.fieldLabel}>Schedule Phase</Text>
-          <View style={styles.phaseRow}>
-            {PHASE_TAGS.map((p) => (
-              <Pressable
-                key={p}
-                onPress={() => setForm((f) => ({ ...f, phaseTag: p }))}
-                style={[styles.phaseChip, form.phaseTag === p && styles.phaseChipSelected]}
-              >
-                <PhaseTag phase={p} small />
-              </Pressable>
-            ))}
-          </View>
+          <PhaseClassifier
+            axes={form.axes}
+            onChange={(axes) => setForm((f) => ({ ...f, axes }))}
+          />
 
           <View style={styles.timeRow}>
             <View style={styles.timeField}>
@@ -374,11 +366,12 @@ function TemplatesModal({ visible, onClose }: { visible: boolean; onClose: () =>
   const [editingTemplate, setEditingTemplate] = useState<BlockTemplate | null>(null);
 
   const handleSave = (form: TemplateFormData) => {
+    const phaseTag = derivePhaseTag(form.axes);
     if (editingTemplate) {
       updateBlockTemplate(editingTemplate.id, {
-        label: form.label.trim(),
+        label: form.label,
         blockType: form.blockType,
-        phaseTag: form.phaseTag,
+        phaseTag,
         startTime: form.startTime,
         endTime: form.endTime,
         daysOfWeek: form.daysOfWeek,
@@ -387,9 +380,9 @@ function TemplatesModal({ visible, onClose }: { visible: boolean; onClose: () =>
     } else {
       addBlockTemplate({
         id: generateId(),
-        label: form.label.trim(),
+        label: form.label,
         blockType: form.blockType,
-        phaseTag: form.phaseTag,
+        phaseTag,
         startTime: form.startTime,
         endTime: form.endTime,
         daysOfWeek: form.daysOfWeek,
@@ -514,7 +507,7 @@ function TemplatesModal({ visible, onClose }: { visible: boolean; onClose: () =>
             ? {
                 label: editingTemplate.label,
                 blockType: editingTemplate.blockType,
-                phaseTag: editingTemplate.phaseTag,
+                axes: axesFromPhaseTag(editingTemplate.phaseTag),
                 startTime: editingTemplate.startTime,
                 endTime: editingTemplate.endTime,
                 daysOfWeek: editingTemplate.daysOfWeek,

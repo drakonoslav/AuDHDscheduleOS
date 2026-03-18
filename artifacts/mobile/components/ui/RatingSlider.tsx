@@ -5,12 +5,13 @@ import { Colors } from "@/constants/colors";
 
 interface RatingSliderProps {
   label: string;
+  sublabel?: string;
   value: number;
   onChange: (v: number) => void;
   inverted?: boolean;
 }
 
-export function RatingSlider({ label, value, onChange, inverted = false }: RatingSliderProps) {
+export function RatingSlider({ label, sublabel, value, onChange, inverted = false }: RatingSliderProps) {
   const handlePress = (v: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onChange(v);
@@ -19,6 +20,7 @@ export function RatingSlider({ label, value, onChange, inverted = false }: Ratin
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
+      {sublabel ? <Text style={styles.sublabel}>{sublabel}</Text> : null}
       <View style={styles.dots}>
         {[1, 2, 3, 4, 5].map((v) => {
           const isSelected = v === value;
@@ -64,7 +66,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 13,
     color: Colors.light.textSecondary,
-    marginBottom: 6,
+    marginBottom: 3,
+  },
+  sublabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.light.textMuted,
+    marginBottom: 7,
   },
   dots: {
     flexDirection: "row",
