@@ -111,12 +111,12 @@ export default function LogScreen() {
 
   const dates = useMemo(() => {
     const arr: string[] = [];
-    for (let i = -3; i <= 0; i++) {
+    for (let i = -90; i <= 0; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
       arr.push(d.toISOString().split("T")[0]!);
     }
-    return arr.reverse();
+    return arr.reverse(); // today first, scroll right = past
   }, []);
 
   const doneBlocks = blocks.filter((b) => b.status === "done");

@@ -538,12 +538,12 @@ export default function PlanScreen() {
 
   const dates = useMemo(() => {
     const arr: string[] = [];
-    for (let i = -1; i <= 5; i++) {
+    for (let i = -1; i <= 44; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
       arr.push(d.toISOString().split("T")[0]!);
     }
-    return arr;
+    return arr; // yesterday first, then today, then 44 days forward
   }, []);
 
   const selectedDayOfWeek = useMemo(
