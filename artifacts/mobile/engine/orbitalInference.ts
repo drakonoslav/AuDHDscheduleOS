@@ -589,7 +589,7 @@ function scoreExpression(
   if (rnScore > 0.7) signals.push("Recovery need low — stabilized");
 
   // Multi-signal stability — the defining feature of Expression (0.30)
-  const stableSignals = ["hrv", "physicalEnergy", "motivation", "recoveryNeedScore", "rhr"];
+  const stableSignals = ["hrv", "physicalEnergy", "motivation", "recoveryNeedScore", "rhr", "bodyFatPct"];
   let stableCount = 0;
   for (const sig of stableSignals) {
     if ((trends[sig] ?? "stable") === "stable") stableCount++;
