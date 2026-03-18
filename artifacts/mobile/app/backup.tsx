@@ -1,9 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import * as Sharing from "expo-sharing";
 import React, { useState } from "react";
 import {
   Alert,
@@ -158,6 +156,8 @@ export default function BackupScreen() {
       if (Platform.OS === "web") {
         webExport(json, filename);
       } else {
+        const FileSystem = await import("expo-file-system");
+        const Sharing = await import("expo-sharing");
         const path = (FileSystem.cacheDirectory ?? "") + filename;
         await FileSystem.writeAsStringAsync(path, json, {
           encoding: FileSystem.EncodingType.UTF8,

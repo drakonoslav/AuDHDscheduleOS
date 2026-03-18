@@ -60,6 +60,76 @@ function overlapKind(
   return "hard";
 }
 
+// ─── Cross-platform sheet modal ───────────────────────────────────────────────
+// React Native Web's Modal with presentationStyle="pageSheet" silently fails in
+// production web builds. This wrapper falls back to an absolutely-positioned
+// overlay on web so the sheets work identically everywhere.
+
+function SheetModal({
+  visible,
+  onClose,
+  zIndex = 900,
+  children,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  zIndex?: number;
+  children: React.ReactNode;
+}) {
+  if (Platform.OS !== "web") {
+    return (
+      <Modal
+        visible={visible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={onClose}
+      >
+        {children}
+      </Modal>
+    );
+  }
+  if (!visible) return null;
+  return (
+    <View style={[sheetStyles.overlay, { zIndex }]}>
+      <Pressable style={sheetStyles.backdrop} onPress={onClose} />
+      <View style={sheetStyles.sheet}>{children}</View>
+    </View>
+  );
+}
+
+const sheetStyles = StyleSheet.create({
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  sheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: "92%",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    backgroundColor: Colors.light.background,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+});
+
 // ─── Add Block Modal ──────────────────────────────────────────────────────────
 
 interface BlockFormData {
@@ -122,7 +192,7 @@ function AddBlockModal({ visible, onClose, onAdd, date, existingBlocks }: {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <SheetModal visible={visible} onClose={onClose}>
       <View style={[styles.modalContainer, { paddingBottom: insets.bottom + 20 }]}>
         <View style={styles.modalHandle} />
         <View style={styles.modalHeader}>
@@ -242,7 +312,7 @@ function AddBlockModal({ visible, onClose, onAdd, date, existingBlocks }: {
           <Text style={styles.addBtnText}>Add Block</Text>
         </Pressable>
       </View>
-    </Modal>
+    </SheetModal>
   );
 }
 
@@ -318,7 +388,7 @@ function TemplateFormModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <SheetModal visible={visible} onClose={onClose} zIndex={1000}>
       <View style={[styles.modalContainer, { paddingBottom: insets.bottom + 20 }]}>
         <View style={styles.modalHandle} />
         <View style={styles.modalHeader}>
@@ -421,7 +491,7 @@ function TemplateFormModal({
           <Text style={styles.addBtnText}>{initial ? "Save Changes" : "Create Template"}</Text>
         </Pressable>
       </View>
-    </Modal>
+    </SheetModal>
   );
 }
 
@@ -463,7 +533,7 @@ function TemplatesModal({ visible, onClose }: { visible: boolean; onClose: () =>
 
   return (
     <>
-      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SheetModal visible={visible} onClose={onClose} zIndex={900}>
         <View style={[styles.modalContainer, { paddingBottom: insets.bottom + 20 }]}>
           <View style={styles.modalHandle} />
           <View style={styles.modalHeader}>
@@ -562,7 +632,7 @@ function TemplatesModal({ visible, onClose }: { visible: boolean; onClose: () =>
             <Text style={styles.addBtnText}>New Template</Text>
           </Pressable>
         </View>
-      </Modal>
+      </SheetModal>
 
       <TemplateFormModal
         visible={showForm}

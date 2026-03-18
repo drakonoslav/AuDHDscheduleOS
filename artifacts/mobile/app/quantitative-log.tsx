@@ -400,8 +400,8 @@ const s = StyleSheet.create({
     color: Colors.light.textMuted, marginBottom: 14, marginTop: -4,
   },
   waistRow: { flexDirection: "row", alignItems: "center", gap: 16 },
-  waistDisplay: { alignItems: "center", width: 90 },
-  waistVal: { fontFamily: "Inter_700Bold", fontSize: 28, color: Colors.light.text, letterSpacing: -0.5 },
+  waistDisplay: { alignItems: "center", minWidth: 60 },
+  waistVal: { fontFamily: "Inter_700Bold", fontSize: 17, color: Colors.light.text, letterSpacing: -0.3 },
   waistUnit: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textMuted, marginTop: 2 },
   saveBtn: {
     backgroundColor: Colors.light.tint, borderRadius: 14,
