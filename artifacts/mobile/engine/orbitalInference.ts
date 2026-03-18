@@ -684,7 +684,12 @@ export function inferOrbitalPhase(
     fallingPhase = (minDrift && minDrift.drift   < -DRIFT_THRESHOLD) ? minDrift.orbitalPhaseId : null;
   }
 
-  // ── Nutrition mismatch detection ─────────────────────────────────────────
+  // ── Nutrition suggestion — always populated when confidence is sufficient ──
+  // The suggestion is derived from the top orbital phase unconditionally.
+  // Mismatch is a separate concern: it compares the suggestion against what
+  // the user is currently running. The suggestion itself is always available
+  // so other surfaces (e.g. the daily log form) can display it without
+  // needing a mismatch to be present.
   const translatedOrbitalPhaseId: OrbitalPhaseId | null = selectedNutritionPhaseId
     ? (NUTRITION_TO_ORBITAL[selectedNutritionPhaseId]?.orbitalPhasePrimary ?? null)
     : null;
@@ -695,6 +700,13 @@ export function inferOrbitalPhase(
   let mismatchDescription: string | undefined;
   let suggestedNutritionPhaseId: NutritionPhaseId | undefined;
   let suggestionRationale: string | undefined;
+
+  // Always set the suggestion when data is sufficient — not gated on mismatch.
+  if (confidence !== "low") {
+    const rec = ORBITAL_TO_NUTRITION_RECOMMENDATION[topPhase];
+    suggestedNutritionPhaseId = rec.phaseId;
+    suggestionRationale = rec.rationale;
+  }
 
   // Gate: mismatch requires a different phase, topScore > 0.5,
   // AND confidence must be at least "moderate" (≥ 3 data points).
@@ -719,10 +731,6 @@ export function inferOrbitalPhase(
       mismatchSeverity === "strong"
         ? `Your current nutrition phase is steering the system toward ${selectedLabel} (orbital distance ${distance}), but signal patterns over the past ${dataPoints} days are consistent with ${observedLabel}. These phases sit on opposite ends of the physiological cycle — continuing the current protocol against this pattern may deepen the mismatch.`
         : `Your current nutrition phase is oriented toward ${selectedLabel}, but the observed signal pattern more closely resembles ${observedLabel} (orbital distance ${distance}). The mismatch is mild — monitor for a few more days, or consider adjusting the protocol if this pattern holds.`;
-
-    const rec = ORBITAL_TO_NUTRITION_RECOMMENDATION[topPhase];
-    suggestedNutritionPhaseId = rec.phaseId;
-    suggestionRationale = rec.rationale;
   }
 
   return {

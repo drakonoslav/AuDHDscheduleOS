@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -16,6 +16,12 @@ import { RatingSlider } from "@/components/ui/RatingSlider";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { NUTRITION_PHASE_MAP } from "@/data/nutritionPhases";
+import {
+  inferOrbitalPhase,
+  ORBITAL_LABELS,
+  ORBITAL_COLORS,
+} from "@/engine/orbitalInference";
+import { buildDailyIndices } from "@/engine/trendEngine";
 import type { DailyStateSnapshot, NutritionPhaseId } from "@/types";
 
 const ALL_PHASES: NutritionPhaseId[] = [
@@ -45,6 +51,24 @@ export default function SnapshotScreen() {
   const [nutritionPhaseId, setNutritionPhaseId] = useState<NutritionPhaseId>(
     existing?.nutritionPhaseId ?? state.currentNutritionPhaseId
   );
+
+  // ── Orbital nutrition suggestion ─────────────────────────────────────────
+  // Derived from the orbital engine using stored data (not today's form values).
+  // Confidence gate: only show when ≥ 3 logged days.
+  const orbitalSuggestion = useMemo(() => {
+    const indices = buildDailyIndices(state.snapshots, state.quantitativeLogs ?? [], 14);
+    if (indices.length < 3) return null;
+    const inference = inferOrbitalPhase(indices, state.currentNutritionPhaseId);
+    if (inference.confidence === "low" || !inference.suggestedNutritionPhaseId) return null;
+    return {
+      phaseId:       inference.suggestedNutritionPhaseId,
+      rationale:     inference.suggestionRationale ?? "",
+      orbitalLabel:  ORBITAL_LABELS[inference.topPhase],
+      orbitalColor:  ORBITAL_COLORS[inference.topPhase],
+      confidence:    inference.confidence,
+      isMismatch:    inference.mismatch,
+    };
+  }, [state.snapshots, state.quantitativeLogs, state.currentNutritionPhaseId]);
 
   const handleSave = () => {
     const snapshot: DailyStateSnapshot = {
@@ -206,21 +230,83 @@ export default function SnapshotScreen() {
 
         {/* ── Nutrition Regime ──────────────────────────────────────────── */}
         <SectionHeader title="Nutrition Regime" note="Current phase for today." />
-        <View style={styles.phaseGrid}>
-          {ALL_PHASES.map((p) => (
-            <Pressable
-              key={p}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setNutritionPhaseId(p);
-              }}
-              style={[styles.phaseChip, p === nutritionPhaseId && styles.phaseChipSelected]}
-            >
-              <Text style={[styles.phaseChipText, p === nutritionPhaseId && styles.phaseChipTextSelected]}>
-                {NUTRITION_PHASE_MAP[p]?.phaseName ?? p}
+
+        {/* Orbital engine suggestion banner */}
+        {orbitalSuggestion && (
+          <View style={[
+            styles.suggestionBanner,
+            orbitalSuggestion.isMismatch && styles.suggestionBannerMismatch,
+          ]}>
+            <View style={styles.suggestionHeader}>
+              <View style={styles.suggestionHeaderLeft}>
+                <View style={[styles.orbitalDot, { backgroundColor: orbitalSuggestion.orbitalColor }]} />
+                <Text style={styles.suggestionOrbital}>
+                  {orbitalSuggestion.orbitalLabel}
+                </Text>
+              </View>
+              <View style={[
+                styles.confidenceBadge,
+                orbitalSuggestion.confidence === "high"
+                  ? styles.confidenceBadgeHigh
+                  : styles.confidenceBadgeMid,
+              ]}>
+                <Text style={styles.confidenceBadgeText}>
+                  {orbitalSuggestion.confidence === "high" ? "High confidence" : "Moderate"}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.suggestionLabel}>
+              Suggests:{" "}
+              <Text style={styles.suggestionPhaseName}>
+                {NUTRITION_PHASE_MAP[orbitalSuggestion.phaseId]?.phaseName ?? orbitalSuggestion.phaseId}
               </Text>
-            </Pressable>
-          ))}
+            </Text>
+            {orbitalSuggestion.rationale !== "" && (
+              <Text style={styles.suggestionRationale} numberOfLines={2}>
+                {orbitalSuggestion.rationale}
+              </Text>
+            )}
+            {orbitalSuggestion.isMismatch && (
+              <Text style={styles.mismatchNote}>
+                ↑ Differs from your active phase
+              </Text>
+            )}
+          </View>
+        )}
+
+        <View style={styles.phaseGrid}>
+          {ALL_PHASES.map((p) => {
+            const isSelected  = p === nutritionPhaseId;
+            const isSuggested = orbitalSuggestion?.phaseId === p;
+            return (
+              <Pressable
+                key={p}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setNutritionPhaseId(p);
+                }}
+                style={[
+                  styles.phaseChip,
+                  isSelected  && styles.phaseChipSelected,
+                  isSuggested && !isSelected && styles.phaseChipSuggested,
+                  isSuggested && isSelected  && styles.phaseChipSuggestedSelected,
+                ]}
+              >
+                {isSuggested && (
+                  <View style={[
+                    styles.suggestionDot,
+                    isSelected && styles.suggestionDotOnSelected,
+                  ]} />
+                )}
+                <Text style={[
+                  styles.phaseChipText,
+                  isSelected && styles.phaseChipTextSelected,
+                ]}>
+                  {NUTRITION_PHASE_MAP[p]?.phaseName ?? p}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -338,12 +424,112 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
   },
   phaseChipSelected: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
+  phaseChipSuggested: {
+    borderColor: Colors.light.amber,
+    borderWidth: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  phaseChipSuggestedSelected: {
+    borderColor: Colors.light.amber,
+    borderWidth: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
   phaseChipText: {
     fontFamily: "Inter_500Medium",
     fontSize: 13,
     color: Colors.light.textSecondary,
   },
   phaseChipTextSelected: { color: Colors.light.surface },
+  suggestionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.light.amber,
+  },
+  suggestionDotOnSelected: {
+    backgroundColor: Colors.light.surface,
+    opacity: 0.9,
+  },
+  suggestionBanner: {
+    backgroundColor: Colors.light.creamMid,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.amber + "66",
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.light.amber,
+    padding: 12,
+    marginBottom: 12,
+    gap: 4,
+  },
+  suggestionBannerMismatch: {
+    borderLeftColor: Colors.light.rose,
+    borderColor: Colors.light.rose + "44",
+  },
+  suggestionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  suggestionHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  orbitalDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  suggestionOrbital: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: Colors.light.text,
+  },
+  confidenceBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  confidenceBadgeHigh: {
+    backgroundColor: Colors.light.structuring + "22",
+  },
+  confidenceBadgeMid: {
+    backgroundColor: Colors.light.amber + "22",
+  },
+  confidenceBadgeText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    color: Colors.light.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  suggestionLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+  },
+  suggestionPhaseName: {
+    fontFamily: "Inter_700Bold",
+    color: Colors.light.text,
+  },
+  suggestionRationale: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.light.textMuted,
+    lineHeight: 17,
+    marginTop: 1,
+  },
+  mismatchNote: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    color: Colors.light.rose,
+    marginTop: 2,
+  },
   footer: {
     flexDirection: "row",
     gap: 10,
