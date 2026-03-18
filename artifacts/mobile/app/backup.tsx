@@ -61,8 +61,23 @@ function todayStr(): string {
 
 // ─── Web file I/O ─────────────────────────────────────────────────────────────
 
-function webExport(json: string, filename: string): void {
+async function webExport(json: string, filename: string): Promise<void> {
   const blob = new Blob([json], { type: "application/json" });
+
+  // Web Share API — works natively on iOS Safari 15+ (triggers Files/AirDrop sheet)
+  if (typeof navigator !== "undefined" && navigator.share) {
+    try {
+      const file = new File([blob], filename, { type: "application/json" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "AuDHD Backup" });
+        return;
+      }
+    } catch (shareErr) {
+      // User cancelled or share failed — fall through to download link
+    }
+  }
+
+  // Fallback: anchor download (works on desktop browsers)
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -70,7 +85,7 @@ function webExport(json: string, filename: string): void {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function webImport(): Promise<string | null> {
@@ -153,24 +168,27 @@ export default function BackupScreen() {
       const json = JSON.stringify(payload, null, 2);
       const filename = `audhd-backup-${todayStr()}.json`;
 
-      if (Platform.OS === "web") {
-        webExport(json, filename);
+      const isWebEnv = typeof document !== "undefined";
+      if (isWebEnv) {
+        await webExport(json, filename);
       } else {
-        const FileSystem = await import("expo-file-system");
-        const Sharing = await import("expo-sharing");
-        const path = (FileSystem.cacheDirectory ?? "") + filename;
-        await FileSystem.writeAsStringAsync(path, json, {
-          encoding: FileSystem.EncodingType.UTF8,
-        });
-        const canShare = await Sharing.isAvailableAsync();
+        const {
+          writeAsStringAsync,
+          cacheDirectory,
+          EncodingType,
+        } = await import("expo-file-system");
+        const { isAvailableAsync, shareAsync } = await import("expo-sharing");
+        const path = (cacheDirectory ?? "") + filename;
+        await writeAsStringAsync(path, json, { encoding: EncodingType.UTF8 });
+        const canShare = await isAvailableAsync();
         if (canShare) {
-          await Sharing.shareAsync(path, {
+          await shareAsync(path, {
             mimeType: "application/json",
             dialogTitle: "Save backup file",
             UTI: "public.json",
           });
         } else {
-          Alert.alert("Sharing unavailable", "File written to app cache. Connect to a computer to retrieve it.");
+          Alert.alert("Sharing unavailable", "File written to app cache.");
         }
       }
 
@@ -198,7 +216,8 @@ export default function BackupScreen() {
 
       let rawText: string | null = null;
 
-      if (Platform.OS === "web") {
+      const isWebEnv = typeof document !== "undefined";
+      if (isWebEnv) {
         rawText = await webImport();
       } else {
         const result = await DocumentPicker.getDocumentAsync({
@@ -209,8 +228,9 @@ export default function BackupScreen() {
           setImporting(false);
           return;
         }
-        rawText = await FileSystem.readAsStringAsync(result.assets[0].uri, {
-          encoding: FileSystem.EncodingType.UTF8,
+        const { readAsStringAsync, EncodingType } = await import("expo-file-system");
+        rawText = await readAsStringAsync(result.assets[0].uri, {
+          encoding: EncodingType.UTF8,
         });
       }
 
