@@ -43,6 +43,14 @@ export const Colors = {
     roseLight: palette.roseLight,
     tabIconDefault: palette.lightGray,
     tabIconSelected: palette.navy,
+    // Direct palette tokens (for components that need finer-grained access)
+    creamMid: palette.creamMid,
+    creamDark: palette.creamDark,
+    navyLight: palette.navyLight,
+    sage: palette.sage,
+    sageLight: palette.sageLight,
+    sageMid: palette.sageMid,
+    // Phase display colors
     expansion: palette.expansion,
     structuring: palette.structuring,
     recovery: palette.recovery,

@@ -42,7 +42,7 @@ function RecCard({ rec, onDismiss }: { rec: WeeklyRecommendation; onDismiss: () 
   const confColor = CONFIDENCE_COLORS[rec.confidence] ?? Colors.light.textMuted;
   return (
     <View style={styles.recCard}>
-      <View style={styles.recHeader}>
+      <View style={styles.recCardHeader}>
         <View style={styles.recIconCircle}>
           <Feather name={iconName as never} size={15} color={Colors.light.textSecondary} />
         </View>
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
     padding: 14,
   },
-  recHeader: {
+  recCardHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
