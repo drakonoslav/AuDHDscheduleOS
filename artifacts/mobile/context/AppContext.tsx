@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import type {
   AppState,
+  BlockTemplate,
   DailyStateSnapshot,
   NutritionPhaseId,
   ScheduleBlock,
@@ -38,6 +39,13 @@ interface AppContextType {
   // Recommendations
   refreshRecommendations: () => void;
   dismissRecommendation: (id: string) => void;
+  // Block templates
+  addBlockTemplate: (template: BlockTemplate) => void;
+  updateBlockTemplate: (id: string, updates: Partial<BlockTemplate>) => void;
+  removeBlockTemplate: (id: string) => void;
+  applyTemplatesToDate: (date: string) => void;
+  // Onboarding
+  completeOnboarding: (phaseId: NutritionPhaseId) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -46,12 +54,17 @@ function todayStr(): string {
   return new Date().toISOString().split("T")[0]!;
 }
 
+function generateId() {
+  return Date.now().toString() + Math.random().toString(36).substring(2, 7);
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>({
     blocks: [],
     snapshots: [],
     trainingLogs: [],
     recommendations: [],
+    blockTemplates: [],
     currentNutritionPhaseId: "base",
     onboardingComplete: false,
   });
@@ -192,6 +205,93 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [updateState]
   );
 
+  // ─── Block Templates ───────────────────────────────────────────
+  const addBlockTemplate = useCallback(
+    (template: BlockTemplate) => {
+      updateState((s) => ({
+        ...s,
+        blockTemplates: [...(s.blockTemplates ?? []), template],
+      }));
+    },
+    [updateState]
+  );
+
+  const updateBlockTemplate = useCallback(
+    (id: string, updates: Partial<BlockTemplate>) => {
+      updateState((s) => ({
+        ...s,
+        blockTemplates: (s.blockTemplates ?? []).map((t) =>
+          t.id === id ? { ...t, ...updates } : t
+        ),
+      }));
+    },
+    [updateState]
+  );
+
+  const removeBlockTemplate = useCallback(
+    (id: string) => {
+      updateState((s) => ({
+        ...s,
+        blockTemplates: (s.blockTemplates ?? []).filter((t) => t.id !== id),
+      }));
+    },
+    [updateState]
+  );
+
+  // Apply all templates that match the given date's day-of-week
+  // Skips any template whose label+time already exists for that date
+  const applyTemplatesToDate = useCallback(
+    (date: string) => {
+      const dayOfWeek = new Date(date + "T12:00:00").getDay();
+      const templates = (state.blockTemplates ?? []).filter((t) =>
+        t.daysOfWeek.includes(dayOfWeek)
+      );
+      if (templates.length === 0) return;
+
+      const existing = state.blocks.filter((b) => b.date === date);
+
+      updateState((s) => {
+        const newBlocks: ScheduleBlock[] = [];
+        for (const tmpl of templates) {
+          const alreadyExists = existing.some(
+            (b) =>
+              b.label === tmpl.label &&
+              b.plannedStart === tmpl.startTime &&
+              b.plannedEnd === tmpl.endTime
+          );
+          if (alreadyExists) continue;
+          const block: ScheduleBlock = {
+            id: generateId(),
+            date,
+            blockType: tmpl.blockType,
+            label: tmpl.label,
+            phaseTag: tmpl.phaseTag,
+            plannedStart: tmpl.startTime,
+            plannedEnd: tmpl.endTime,
+            status: "planned",
+            notes: tmpl.notes,
+          };
+          const devs = calcBlockDeviations(block);
+          newBlocks.push({ ...block, ...devs });
+        }
+        return { ...s, blocks: [...s.blocks, ...newBlocks] };
+      });
+    },
+    [state.blockTemplates, state.blocks, updateState]
+  );
+
+  // ─── Onboarding ────────────────────────────────────────────────
+  const completeOnboarding = useCallback(
+    (phaseId: NutritionPhaseId) => {
+      updateState((s) => ({
+        ...s,
+        currentNutritionPhaseId: phaseId,
+        onboardingComplete: true,
+      }));
+    },
+    [updateState]
+  );
+
   return (
     <AppContext.Provider
       value={{
@@ -210,6 +310,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setNutritionPhase,
         refreshRecommendations,
         dismissRecommendation,
+        addBlockTemplate,
+        updateBlockTemplate,
+        removeBlockTemplate,
+        applyTemplatesToDate,
+        completeOnboarding,
       }}
     >
       {children}

@@ -245,12 +245,26 @@ export interface WeeklyRecommendation {
   dismissed: boolean;
 }
 
+// ─── BLOCK TEMPLATE (RECURRING SCHEDULE) ──────────────────────────────────────
+// A reusable canonical block definition that can be applied to any day
+export interface BlockTemplate {
+  id: string;
+  label: string;
+  blockType: BlockType;
+  phaseTag: SchedulePhaseTag;
+  startTime: string;   // HH:MM
+  endTime: string;     // HH:MM
+  daysOfWeek: number[]; // 0=Sun, 1=Mon … 6=Sat
+  notes?: string;
+}
+
 // ─── APP STATE ────────────────────────────────────────────────────────────────
 export interface AppState {
   blocks: ScheduleBlock[];
   snapshots: DailyStateSnapshot[];
   trainingLogs: TrainingLog[];
   recommendations: WeeklyRecommendation[];
+  blockTemplates: BlockTemplate[];
   currentNutritionPhaseId: NutritionPhaseId;
   onboardingComplete: boolean;
 }

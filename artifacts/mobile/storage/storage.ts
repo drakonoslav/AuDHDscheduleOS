@@ -10,6 +10,7 @@ const DEFAULT_STATE: AppState = {
   snapshots: [],
   trainingLogs: [],
   recommendations: [],
+  blockTemplates: [],
   currentNutritionPhaseId: "base",
   onboardingComplete: false,
 };

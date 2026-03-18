@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PhaseTag } from "@/components/ui/PhaseTag";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
-import type { BlockType, ScheduleBlock, SchedulePhaseTag } from "@/types";
+import type { BlockTemplate, BlockType, ScheduleBlock, SchedulePhaseTag } from "@/types";
 
 const BLOCK_TYPES: BlockType[] = [
   "wake", "meal", "work", "commute", "cardio", "lift",
@@ -27,9 +27,13 @@ const BLOCK_TYPES: BlockType[] = [
 
 const PHASE_TAGS: SchedulePhaseTag[] = ["expansion", "structuring", "recovery"];
 
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substring(2, 7);
 }
+
+// ─── Add Block Modal ──────────────────────────────────────────────────────────
 
 interface BlockFormData {
   label: string;
@@ -182,10 +186,354 @@ function AddBlockModal({ visible, onClose, onAdd, date }: {
   );
 }
 
+// ─── Template Form ────────────────────────────────────────────────────────────
+
+interface TemplateFormData {
+  label: string;
+  blockType: BlockType;
+  phaseTag: SchedulePhaseTag;
+  startTime: string;
+  endTime: string;
+  daysOfWeek: number[];
+  notes: string;
+}
+
+const DEFAULT_TEMPLATE_FORM: TemplateFormData = {
+  label: "",
+  blockType: "work",
+  phaseTag: "structuring",
+  startTime: "09:00",
+  endTime: "10:00",
+  daysOfWeek: [1, 2, 3, 4, 5],
+  notes: "",
+};
+
+function TemplateFormModal({
+  visible,
+  onClose,
+  onSave,
+  initial,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSave: (form: TemplateFormData) => void;
+  initial?: TemplateFormData;
+}) {
+  const insets = useSafeAreaInsets();
+  const [form, setForm] = useState<TemplateFormData>(initial ?? DEFAULT_TEMPLATE_FORM);
+
+  React.useEffect(() => {
+    if (visible) setForm(initial ?? DEFAULT_TEMPLATE_FORM);
+  }, [visible]);
+
+  const toggleDay = (d: number) => {
+    setForm((f) => ({
+      ...f,
+      daysOfWeek: f.daysOfWeek.includes(d)
+        ? f.daysOfWeek.filter((x) => x !== d)
+        : [...f.daysOfWeek, d].sort(),
+    }));
+  };
+
+  const handleSave = () => {
+    if (!form.label.trim()) {
+      Alert.alert("Name required", "Please enter a name for this template.");
+      return;
+    }
+    if (form.daysOfWeek.length === 0) {
+      Alert.alert("Days required", "Select at least one day.");
+      return;
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onSave(form);
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={[styles.modalContainer, { paddingBottom: insets.bottom + 20 }]}>
+        <View style={styles.modalHandle} />
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>{initial ? "Edit Template" : "New Template"}</Text>
+          <Pressable onPress={onClose}>
+            <Feather name="x" size={22} color={Colors.light.textSecondary} />
+          </Pressable>
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+          <Text style={styles.fieldLabel}>Name</Text>
+          <TextInput
+            style={styles.textInput}
+            value={form.label}
+            onChangeText={(t) => setForm((f) => ({ ...f, label: t }))}
+            placeholder="e.g. Morning Cardio, Deep Work"
+            placeholderTextColor={Colors.light.textMuted}
+            autoFocus
+          />
+
+          <Text style={styles.fieldLabel}>Block Type</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+            {BLOCK_TYPES.map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => setForm((f) => ({ ...f, blockType: t }))}
+                style={[styles.chip, form.blockType === t && styles.chipSelected]}
+              >
+                <Text style={[styles.chipText, form.blockType === t && styles.chipTextSelected]}>
+                  {t}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          <Text style={styles.fieldLabel}>Schedule Phase</Text>
+          <View style={styles.phaseRow}>
+            {PHASE_TAGS.map((p) => (
+              <Pressable
+                key={p}
+                onPress={() => setForm((f) => ({ ...f, phaseTag: p }))}
+                style={[styles.phaseChip, form.phaseTag === p && styles.phaseChipSelected]}
+              >
+                <PhaseTag phase={p} small />
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.timeRow}>
+            <View style={styles.timeField}>
+              <Text style={styles.fieldLabel}>Start Time</Text>
+              <TextInput
+                style={styles.textInput}
+                value={form.startTime}
+                onChangeText={(t) => setForm((f) => ({ ...f, startTime: t }))}
+                placeholder="HH:MM"
+                placeholderTextColor={Colors.light.textMuted}
+                keyboardType="numbers-and-punctuation"
+              />
+            </View>
+            <View style={styles.timeField}>
+              <Text style={styles.fieldLabel}>End Time</Text>
+              <TextInput
+                style={styles.textInput}
+                value={form.endTime}
+                onChangeText={(t) => setForm((f) => ({ ...f, endTime: t }))}
+                placeholder="HH:MM"
+                placeholderTextColor={Colors.light.textMuted}
+                keyboardType="numbers-and-punctuation"
+              />
+            </View>
+          </View>
+
+          <Text style={styles.fieldLabel}>Repeats on</Text>
+          <View style={styles.daysRow}>
+            {DAY_LABELS.map((label, i) => (
+              <Pressable
+                key={i}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  toggleDay(i);
+                }}
+                style={[styles.dayChip, form.daysOfWeek.includes(i) && styles.dayChipSelected]}
+              >
+                <Text style={[styles.dayChipText, form.daysOfWeek.includes(i) && styles.dayChipTextSelected]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={styles.fieldLabel}>Notes (optional)</Text>
+          <TextInput
+            style={[styles.textInput, styles.notesInput]}
+            value={form.notes}
+            onChangeText={(t) => setForm((f) => ({ ...f, notes: t }))}
+            placeholder="Any context..."
+            placeholderTextColor={Colors.light.textMuted}
+            multiline
+            numberOfLines={3}
+          />
+        </ScrollView>
+
+        <Pressable
+          onPress={handleSave}
+          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
+        >
+          <Text style={styles.addBtnText}>{initial ? "Save Changes" : "Create Template"}</Text>
+        </Pressable>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Templates Manager Modal ──────────────────────────────────────────────────
+
+function TemplatesModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const { state, addBlockTemplate, updateBlockTemplate, removeBlockTemplate } = useApp();
+  const templates = state.blockTemplates ?? [];
+  const [showForm, setShowForm] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<BlockTemplate | null>(null);
+
+  const handleSave = (form: TemplateFormData) => {
+    if (editingTemplate) {
+      updateBlockTemplate(editingTemplate.id, {
+        label: form.label.trim(),
+        blockType: form.blockType,
+        phaseTag: form.phaseTag,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        daysOfWeek: form.daysOfWeek,
+        notes: form.notes.trim() || undefined,
+      });
+    } else {
+      addBlockTemplate({
+        id: generateId(),
+        label: form.label.trim(),
+        blockType: form.blockType,
+        phaseTag: form.phaseTag,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        daysOfWeek: form.daysOfWeek,
+        notes: form.notes.trim() || undefined,
+      });
+    }
+    setEditingTemplate(null);
+  };
+
+  return (
+    <>
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+        <View style={[styles.modalContainer, { paddingBottom: insets.bottom + 20 }]}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Recurring Templates</Text>
+            <Pressable onPress={onClose}>
+              <Feather name="x" size={22} color={Colors.light.textSecondary} />
+            </Pressable>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+            <Text style={styles.tmplSubtitle}>
+              Define your canonical week. Apply templates to any day to populate it instantly.
+            </Text>
+
+            {templates.length === 0 ? (
+              <View style={styles.tmplEmpty}>
+                <Feather name="repeat" size={32} color={Colors.light.textMuted} />
+                <Text style={styles.tmplEmptyTitle}>No templates yet</Text>
+                <Text style={styles.tmplEmptyBody}>
+                  Create templates for blocks that repeat each week — wake time, cardio, work sessions, meals.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.tmplList}>
+                {templates.map((tmpl) => (
+                  <View key={tmpl.id} style={styles.tmplCard}>
+                    <View style={styles.tmplCardTop}>
+                      <View style={styles.tmplCardLeft}>
+                        <Text style={styles.tmplLabel}>{tmpl.label}</Text>
+                        <Text style={styles.tmplTime}>{tmpl.startTime} – {tmpl.endTime}</Text>
+                        <View style={styles.tmplMeta}>
+                          <PhaseTag phase={tmpl.phaseTag} small />
+                          <Text style={styles.tmplType}>{tmpl.blockType}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.tmplActions}>
+                        <Pressable
+                          onPress={() => {
+                            setEditingTemplate(tmpl);
+                            setShowForm(true);
+                          }}
+                          style={styles.tmplActionBtn}
+                        >
+                          <Feather name="edit-2" size={15} color={Colors.light.textSecondary} />
+                        </Pressable>
+                        <Pressable
+                          onPress={() => {
+                            Alert.alert("Remove Template", `Remove "${tmpl.label}"?`, [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Remove",
+                                style: "destructive",
+                                onPress: () => removeBlockTemplate(tmpl.id),
+                              },
+                            ]);
+                          }}
+                          style={styles.tmplActionBtn}
+                        >
+                          <Feather name="trash-2" size={15} color={Colors.light.textMuted} />
+                        </Pressable>
+                      </View>
+                    </View>
+                    <View style={styles.daysDisplay}>
+                      {DAY_LABELS.map((label, i) => (
+                        <View
+                          key={i}
+                          style={[
+                            styles.dayPill,
+                            tmpl.daysOfWeek.includes(i) && styles.dayPillActive,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.dayPillText,
+                              tmpl.daysOfWeek.includes(i) && styles.dayPillTextActive,
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+
+          <Pressable
+            onPress={() => {
+              setEditingTemplate(null);
+              setShowForm(true);
+            }}
+            style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
+          >
+            <Text style={styles.addBtnText}>New Template</Text>
+          </Pressable>
+        </View>
+      </Modal>
+
+      <TemplateFormModal
+        visible={showForm}
+        onClose={() => {
+          setShowForm(false);
+          setEditingTemplate(null);
+        }}
+        onSave={handleSave}
+        initial={
+          editingTemplate
+            ? {
+                label: editingTemplate.label,
+                blockType: editingTemplate.blockType,
+                phaseTag: editingTemplate.phaseTag,
+                startTime: editingTemplate.startTime,
+                endTime: editingTemplate.endTime,
+                daysOfWeek: editingTemplate.daysOfWeek,
+                notes: editingTemplate.notes ?? "",
+              }
+            : undefined
+        }
+      />
+    </>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+
 export default function PlanScreen() {
   const insets = useSafeAreaInsets();
-  const { today, blocksForDate, addBlock, removeBlock } = useApp();
+  const { today, blocksForDate, addBlock, removeBlock, applyTemplatesToDate, state } = useApp();
   const [showAdd, setShowAdd] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [selectedDate, setSelectedDate] = useState(today);
 
   const blocks = useMemo(() => {
@@ -205,19 +553,38 @@ export default function PlanScreen() {
     return arr;
   }, []);
 
+  const selectedDayOfWeek = useMemo(
+    () => new Date(selectedDate + "T12:00:00").getDay(),
+    [selectedDate]
+  );
+
+  const hasTemplatesForDay = useMemo(
+    () => (state.blockTemplates ?? []).some((t) => t.daysOfWeek.includes(selectedDayOfWeek)),
+    [state.blockTemplates, selectedDayOfWeek]
+  );
+
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Plan</Text>
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            setShowAdd(true);
-          }}
-          style={({ pressed }) => [styles.addIconBtn, pressed && { opacity: 0.7 }]}
-        >
-          <Feather name="plus" size={20} color={Colors.light.surface} />
-        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={() => setShowTemplates(true)}
+            style={({ pressed }) => [styles.tmplHeaderBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="repeat" size={16} color={Colors.light.textSecondary} />
+            <Text style={styles.tmplHeaderBtnText}>Templates</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setShowAdd(true);
+            }}
+            style={({ pressed }) => [styles.addIconBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="plus" size={20} color={Colors.light.surface} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Date selector */}
@@ -252,6 +619,21 @@ export default function PlanScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
       >
+        {/* Apply templates banner */}
+        {hasTemplatesForDay && (
+          <Pressable
+            style={({ pressed }) => [styles.applyBanner, pressed && { opacity: 0.85 }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              applyTemplatesToDate(selectedDate);
+            }}
+          >
+            <Feather name="repeat" size={14} color={Colors.light.navyDark} />
+            <Text style={styles.applyBannerText}>Apply week templates to this day</Text>
+            <Feather name="plus" size={14} color={Colors.light.navyDark} />
+          </Pressable>
+        )}
+
         {blocks.length === 0 ? (
           <View style={styles.emptyState}>
             <Feather name="calendar" size={36} color={Colors.light.textMuted} />
@@ -300,6 +682,10 @@ export default function PlanScreen() {
         onAdd={addBlock}
         date={selectedDate}
       />
+      <TemplatesModal
+        visible={showTemplates}
+        onClose={() => setShowTemplates(false)}
+      />
     </View>
   );
 }
@@ -318,6 +704,27 @@ const styles = StyleSheet.create({
     fontSize: 26,
     color: Colors.light.text,
     letterSpacing: -0.5,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  tmplHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.surface,
+  },
+  tmplHeaderBtnText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.light.textSecondary,
   },
   addIconBtn: {
     width: 36,
@@ -363,6 +770,24 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   scroll: { paddingHorizontal: 16 },
+  applyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.light.cream,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.navyDark + "33",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+  applyBannerText: {
+    flex: 1,
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.light.navyDark,
+  },
   blockList: { gap: 6 },
   planCard: {
     backgroundColor: Colors.light.surface,
@@ -405,7 +830,88 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   emptyBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: Colors.light.surface },
-  // Modal
+  // Templates
+  tmplSubtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    lineHeight: 19,
+    marginBottom: 16,
+  },
+  tmplEmpty: { alignItems: "center", paddingVertical: 40, gap: 10 },
+  tmplEmptyTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 16,
+    color: Colors.light.textSecondary,
+  },
+  tmplEmptyBody: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.light.textMuted,
+    textAlign: "center",
+    lineHeight: 19,
+    paddingHorizontal: 20,
+  },
+  tmplList: { gap: 8 },
+  tmplCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 14,
+    gap: 10,
+  },
+  tmplCardTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  tmplCardLeft: { flex: 1, gap: 3 },
+  tmplLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: Colors.light.text,
+  },
+  tmplTime: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    color: Colors.light.textMuted,
+  },
+  tmplMeta: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
+  tmplType: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.light.textMuted,
+    textTransform: "capitalize",
+  },
+  tmplActions: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  tmplActionBtn: {
+    padding: 8,
+  },
+  daysDisplay: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  dayPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 5,
+    backgroundColor: Colors.light.border,
+  },
+  dayPillActive: {
+    backgroundColor: Colors.light.navyDark,
+  },
+  dayPillText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    color: Colors.light.textMuted,
+  },
+  dayPillTextActive: {
+    color: Colors.light.surface,
+  },
+  // Shared modal styles
   modalContainer: {
     flex: 1,
     backgroundColor: Colors.light.background,
@@ -478,6 +984,25 @@ const styles = StyleSheet.create({
   phaseChipSelected: { borderColor: Colors.light.tint },
   timeRow: { flexDirection: "row", gap: 12 },
   timeField: { flex: 1 },
+  daysRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+  dayChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  dayChipSelected: {
+    backgroundColor: Colors.light.navyDark,
+    borderColor: Colors.light.navyDark,
+  },
+  dayChipText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+  },
+  dayChipTextSelected: { color: Colors.light.surface },
   addBtn: {
     backgroundColor: Colors.light.tint,
     borderRadius: 12,

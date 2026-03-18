@@ -47,6 +47,8 @@ export const Colors = {
     creamMid: palette.creamMid,
     creamDark: palette.creamDark,
     navyLight: palette.navyLight,
+    navyDark: palette.navy,
+    cream: palette.cream,
     sage: palette.sage,
     sageLight: palette.sageLight,
     sageMid: palette.sageMid,
