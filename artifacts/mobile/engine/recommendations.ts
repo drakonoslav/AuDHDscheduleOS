@@ -67,7 +67,7 @@ export function generateRecommendations(state: AppState): WeeklyRecommendation[]
           type: "timing_shift",
           confidence: "pattern_backed",
           title: `${type.charAt(0).toUpperCase() + type.slice(1)} blocks have high resistance`,
-          body: `Your ${type} blocks have shown high resistance ${count} times in the last 2 weeks. This may reflect wrong timing for your neuro-state — not discipline failure.`,
+          body: `You've repeatedly hit high resistance on ${type} blocks — ${count} times in the last 2 weeks. This is a consistent pattern, not an occasional difficulty. The timing is likely misaligned with your neuro-state, not your discipline.`,
           actionable: `Try shifting your ${type} block 30–60 min earlier or later and observe whether resistance changes.`,
         })
       );
@@ -84,7 +84,7 @@ export function generateRecommendations(state: AppState): WeeklyRecommendation[]
         type: "fewer_blocks",
         confidence: "pattern_backed",
         title: "Reduce block load on poor sleep days",
-        body: `You've had ${lowSleepDays.length} low-sleep days recently. On these days, a full schedule increases overload risk without improving output.`,
+        body: `You've repeatedly had low-sleep days — ${lowSleepDays.length} in the last 2 weeks. Running a full block schedule on these days consistently raises overload risk without improving output.`,
         actionable: "On days with sleep quality ≤2 or <6.5h, remove 1–2 optional blocks and protect recovery time.",
       })
     );
@@ -100,7 +100,7 @@ export function generateRecommendations(state: AppState): WeeklyRecommendation[]
         type: "environment",
         confidence: "pattern_backed",
         title: "Protect sensory environment on high-load days",
-        body: `High sensory load appeared ${highSensoryDays.length} times recently. Errands and public-facing blocks on these days raise overload risk.`,
+        body: `You've repeatedly logged high sensory load — ${highSensoryDays.length} times in the last 2 weeks. Errands and public-facing blocks on these days consistently compound that load and raise overload risk.`,
         actionable: "Schedule errands in early-morning low-crowd windows. Add a recovery block after any public exposure.",
       })
     );
@@ -121,7 +121,7 @@ export function generateRecommendations(state: AppState): WeeklyRecommendation[]
         type: "timing_shift",
         confidence: "emerging",
         title: "Expansion blocks on recovery days cause overload",
-        body: `Expansion-tagged blocks on recovery-favoring days led to overload ${mismatchedDays.length} times recently. This is a state-schedule mismatch, not a motivation issue.`,
+        body: `This may be starting to show a pattern — expansion-tagged blocks on recovery days have coincided with high overload ${mismatchedDays.length} times recently. Worth watching before acting on it, but the signal is there.`,
         actionable: "On recovery days, replace expansion blocks with structuring or rest blocks. Reserve novelty for higher-state days.",
       })
     );
@@ -140,7 +140,7 @@ export function generateRecommendations(state: AppState): WeeklyRecommendation[]
         type: "training_placement",
         confidence: "emerging",
         title: "Late lifting disrupts bedtime",
-        body: `Lifting after 7pm has correlated with high bedtime impact ${lateLiftDays.length} times. Late CNS stimulation may be pushing your sleep window.`,
+        body: `This may be starting to show a pattern — late lifting has coincided with high bedtime impact ${lateLiftDays.length} times. It's an early signal; more data will confirm whether the timing is the driver.`,
         actionable: "Try moving lift sessions to before 6pm. If evening is the only option, reduce intensity on those days.",
       })
     );
@@ -160,7 +160,7 @@ export function generateRecommendations(state: AppState): WeeklyRecommendation[]
         type: "meal_timing",
         confidence: "emerging",
         title: "Pre-lift meal timing may be off",
-        body: `Your pre-lift meals have fallen outside the 30–90 min window on ${poorPreLiftTiming.length} occasions alongside low motivation before lifting.`,
+        body: `This may be starting to show a pattern — pre-lift meals have fallen outside the 30–90 min window on ${poorPreLiftTiming.length} occasions, each alongside low motivation before lifting. Early signal; log more sessions to confirm.`,
         actionable: "Aim for pre-lift carbs 45–60 min before your session. Dextrin + Whey 45 min prior is your current template.",
       })
     );
