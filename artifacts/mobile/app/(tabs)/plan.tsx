@@ -34,6 +34,19 @@ function generateId() {
   return Date.now().toString() + Math.random().toString(36).substring(2, 7);
 }
 
+function timeToMins(t: string): number {
+  const [h = 0, m = 0] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function blocksOverlap(
+  a: { plannedStart: string; plannedEnd: string },
+  b: { plannedStart: string; plannedEnd: string }
+): boolean {
+  return timeToMins(a.plannedStart) < timeToMins(b.plannedEnd) &&
+    timeToMins(b.plannedStart) < timeToMins(a.plannedEnd);
+}
+
 // ─── Add Block Modal ──────────────────────────────────────────────────────────
 
 interface BlockFormData {
@@ -54,14 +67,20 @@ const DEFAULT_FORM: BlockFormData = {
   notes: "",
 };
 
-function AddBlockModal({ visible, onClose, onAdd, date }: {
+function AddBlockModal({ visible, onClose, onAdd, date, existingBlocks }: {
   visible: boolean;
   onClose: () => void;
   onAdd: (block: ScheduleBlock) => void;
   date: string;
+  existingBlocks: ScheduleBlock[];
 }) {
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<BlockFormData>(DEFAULT_FORM);
+
+  const overlapWarnings = useMemo(() => {
+    if (!form.plannedStart.match(/^\d{2}:\d{2}$/) || !form.plannedEnd.match(/^\d{2}:\d{2}$/)) return [];
+    return existingBlocks.filter((b) => blocksOverlap(form, b)).map((b) => b.label);
+  }, [form.plannedStart, form.plannedEnd, existingBlocks]);
 
   const handleAdd = () => {
     if (!form.label.trim()) {
@@ -153,6 +172,20 @@ function AddBlockModal({ visible, onClose, onAdd, date }: {
               />
             </View>
           </View>
+
+          {overlapWarnings.length > 0 && (
+            <View style={styles.overlapInlineWarn}>
+              <Feather name="alert-triangle" size={13} color={Colors.light.amber} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.overlapInlineTitle}>
+                  Overlaps with: {overlapWarnings.join(", ")}
+                </Text>
+                <Text style={styles.overlapInlineBody}>
+                  Ratings on overlapping blocks may reflect mixed demands. Note this when reviewing scores later.
+                </Text>
+              </View>
+            </View>
+          )}
 
           <Text style={styles.fieldLabel}>Notes (optional)</Text>
           <TextInput
@@ -534,6 +567,19 @@ export default function PlanScreen() {
     return [...raw].sort((a, b) => a.plannedStart.localeCompare(b.plannedStart));
   }, [blocksForDate, selectedDate]);
 
+  const overlappingIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (let i = 0; i < blocks.length; i++) {
+      for (let j = i + 1; j < blocks.length; j++) {
+        if (blocksOverlap(blocks[i]!, blocks[j]!)) {
+          ids.add(blocks[i]!.id);
+          ids.add(blocks[j]!.id);
+        }
+      }
+    }
+    return ids;
+  }, [blocks]);
+
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const dates = useMemo(() => {
@@ -652,8 +698,13 @@ export default function PlanScreen() {
                   ]);
                 }}
                 onPress={() => router.push({ pathname: "/block-detail", params: { id: block.id } })}
-                style={({ pressed }) => [styles.planCard, pressed && { opacity: 0.85 }]}
+                style={({ pressed }) => [
+                  styles.planCard,
+                  overlappingIds.has(block.id) && styles.planCardOverlap,
+                  pressed && { opacity: 0.85 },
+                ]}
               >
+                {overlappingIds.has(block.id) && <View style={styles.overlapAccent} />}
                 <View style={styles.planCardLeft}>
                   <Text style={styles.planTime}>{block.plannedStart} – {block.plannedEnd}</Text>
                   <Text style={styles.planLabel}>{block.label}</Text>
@@ -661,6 +712,11 @@ export default function PlanScreen() {
                     <PhaseTag phase={block.phaseTag} small />
                     <Text style={styles.planType}>{block.blockType}</Text>
                   </View>
+                  {overlappingIds.has(block.id) && (
+                    <Text style={styles.overlapCardNote}>
+                      Time overlap — ratings may reflect mixed demands
+                    </Text>
+                  )}
                 </View>
                 <Feather name="chevron-right" size={16} color={Colors.light.textMuted} />
               </Pressable>
@@ -674,6 +730,7 @@ export default function PlanScreen() {
         onClose={() => setShowAdd(false)}
         onAdd={addBlock}
         date={selectedDate}
+        existingBlocks={blocks}
       />
       <TemplatesModal
         visible={showTemplates}
@@ -791,6 +848,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 14,
     gap: 10,
+    overflow: "hidden",
+  },
+  planCardOverlap: {
+    borderColor: Colors.light.amber + "66",
+    backgroundColor: Colors.light.surface,
+  },
+  overlapAccent: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: Colors.light.amber,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+  },
+  overlapCardNote: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.light.amber,
+    marginTop: 4,
   },
   planCardLeft: { flex: 1 },
   planTime: {
@@ -1004,4 +1082,27 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   addBtnText: { fontFamily: "Inter_700Bold", fontSize: 16, color: Colors.light.surface },
+  overlapInlineWarn: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "flex-start",
+    backgroundColor: Colors.light.amber + "18",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.amber + "44",
+    padding: 10,
+    marginBottom: 10,
+  },
+  overlapInlineTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: Colors.light.amber,
+    marginBottom: 2,
+  },
+  overlapInlineBody: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    lineHeight: 16,
+  },
 });
