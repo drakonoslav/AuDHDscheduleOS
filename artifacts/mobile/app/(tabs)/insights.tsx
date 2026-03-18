@@ -305,28 +305,70 @@ function OrbitalPressureSection({ inference }: { inference: OrbitalInference }) 
       {/* All-phase likelihood bars */}
       <View style={op.barsCard}>
         <Text style={op.barsTitle}>Phase Likelihood Ranking</Text>
-        {inference.likelihoods.map((l) => (
-          <View key={l.orbitalPhaseId} style={op.barRow}>
-            <Text style={[op.barLabel, l.orbitalPhaseId === topScore && { fontFamily: "Inter_600SemiBold" }]}>
-              {l.label}
-            </Text>
-            <View style={op.barTrack}>
-              <View
-                style={[
-                  op.barFill,
-                  {
-                    width: `${Math.round(l.score * 100)}%` as `${number}%`,
-                    backgroundColor: ORBITAL_COLORS[l.orbitalPhaseId],
-                    opacity: l.orbitalPhaseId === topScore ? 1.0 : 0.45,
-                  },
-                ]}
-              />
+        {inference.likelihoods.map((l) => {
+          const isRising  = inference.risingPhase  === l.orbitalPhaseId;
+          const isFalling = inference.fallingPhase === l.orbitalPhaseId;
+          return (
+            <View key={l.orbitalPhaseId} style={op.barRow}>
+              <View style={op.barLabelWrap}>
+                <Text style={[op.barLabel, l.orbitalPhaseId === topScore && { fontFamily: "Inter_600SemiBold" }]}>
+                  {l.label}
+                </Text>
+                {isRising && (
+                  <View style={[op.driftPill, { backgroundColor: Colors.light.structuring + "22" }]}>
+                    <Text style={[op.driftPillText, { color: Colors.light.structuring }]}>↑</Text>
+                  </View>
+                )}
+                {isFalling && (
+                  <View style={[op.driftPill, { backgroundColor: Colors.light.rose + "22" }]}>
+                    <Text style={[op.driftPillText, { color: Colors.light.rose }]}>↓</Text>
+                  </View>
+                )}
+              </View>
+              <View style={op.barTrack}>
+                <View
+                  style={[
+                    op.barFill,
+                    {
+                      width: `${Math.round(l.score * 100)}%` as `${number}%`,
+                      backgroundColor: ORBITAL_COLORS[l.orbitalPhaseId],
+                      opacity: l.orbitalPhaseId === topScore ? 1.0 : 0.45,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={[op.barPct, { color: ORBITAL_COLORS[l.orbitalPhaseId] }]}>
+                {Math.round(l.score * 100)}%
+              </Text>
             </View>
-            <Text style={[op.barPct, { color: ORBITAL_COLORS[l.orbitalPhaseId] }]}>
-              {Math.round(l.score * 100)}%
-            </Text>
+          );
+        })}
+
+        {/* Drift legend — only shown when drift data is available */}
+        {inference.driftAvailable && (inference.risingPhase || inference.fallingPhase) && (
+          <View style={op.driftLegend}>
+            {inference.risingPhase && (
+              <View style={op.driftLegendRow}>
+                <View style={[op.driftPill, { backgroundColor: Colors.light.structuring + "22" }]}>
+                  <Text style={[op.driftPillText, { color: Colors.light.structuring }]}>↑</Text>
+                </View>
+                <Text style={op.driftLegendText}>
+                  {ORBITAL_LABELS[inference.risingPhase]} gaining pressure (last 3d vs 7d)
+                </Text>
+              </View>
+            )}
+            {inference.fallingPhase && (
+              <View style={op.driftLegendRow}>
+                <View style={[op.driftPill, { backgroundColor: Colors.light.rose + "22" }]}>
+                  <Text style={[op.driftPillText, { color: Colors.light.rose }]}>↓</Text>
+                </View>
+                <Text style={op.driftLegendText}>
+                  {ORBITAL_LABELS[inference.fallingPhase]} losing pressure (last 3d vs 7d)
+                </Text>
+              </View>
+            )}
           </View>
-        ))}
+        )}
       </View>
 
       {/* Nutrition mismatch card — only shown when mismatch detected */}
@@ -446,10 +488,16 @@ const op = StyleSheet.create({
   },
   barsTitle: { fontFamily: "Inter_500Medium", fontSize: 11, color: Colors.light.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
   barRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  barLabel: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textSecondary, width: 110 },
+  barLabelWrap: { flexDirection: "row", alignItems: "center", gap: 4, width: 118 },
+  barLabel: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textSecondary },
   barTrack: { flex: 1, height: 7, backgroundColor: Colors.light.creamMid, borderRadius: 4, overflow: "hidden" },
   barFill: { height: "100%" as `${number}%`, borderRadius: 4 },
   barPct: { fontFamily: "Inter_600SemiBold", fontSize: 10, width: 30, textAlign: "right" },
+  driftPill: { borderRadius: 3, paddingHorizontal: 3, paddingVertical: 1 },
+  driftPillText: { fontFamily: "Inter_700Bold", fontSize: 9 },
+  driftLegend: { marginTop: 10, gap: 5, borderTopWidth: 1, borderTopColor: Colors.light.border, paddingTop: 10 },
+  driftLegendRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  driftLegendText: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textSecondary, flex: 1 },
 
   // Mismatch card
   mismatchCard: {
