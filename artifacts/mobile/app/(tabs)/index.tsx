@@ -18,6 +18,11 @@ import { useApp } from "@/context/AppContext";
 import { NUTRITION_PHASE_MAP } from "@/data/nutritionPhases";
 import { NUTRITION_TO_ORBITAL } from "@/data/nutritionToOrbitalMap";
 import { ORBITAL_PHASE_MAP } from "@/data/orbitalPhases";
+import { buildDailyIndices } from "@/engine/trendEngine";
+import {
+  interpretTrainingReadiness,
+  TRAINING_MODE_DISPLAY,
+} from "@/engine/trainingReadiness";
 import type { ScheduleBlock } from "@/types";
 
 const BLOCK_TYPE_ICONS: Record<string, string> = {
@@ -113,6 +118,137 @@ function DayModeCard({ mode }: { mode: string }) {
   );
 }
 
+function TrainingReadinessCard() {
+  const { today, snapshotForDate, state } = useApp();
+  const snapshot = snapshotForDate(today);
+
+  const readiness = useMemo(() => {
+    const indices = buildDailyIndices(state.snapshots, state.quantitativeLogs ?? [], 14);
+    const recentTraining = state.trainingLogs.filter((l) => {
+      const d = new Date(l.date);
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 14);
+      return d >= cutoff;
+    });
+    return interpretTrainingReadiness(snapshot, indices, recentTraining);
+  }, [snapshot, state.snapshots, state.quantitativeLogs, state.trainingLogs, today]);
+
+  const display = TRAINING_MODE_DISPLAY[readiness.mode];
+
+  const CONF_COLORS = {
+    high:     Colors.light.structuring,
+    moderate: Colors.light.amber,
+    low:      Colors.light.textMuted,
+  };
+  const QUALITY_LABELS = {
+    full:    "Full data",
+    partial: "Partial data",
+    sparse:  "Sparse data",
+  };
+
+  return (
+    <View style={[trc.card, { borderLeftColor: display.color }]}>
+      <View style={trc.topRow}>
+        <View>
+          <Text style={trc.layer}>Training Readiness</Text>
+          <Text style={[trc.mode, { color: display.color }]}>{display.label}</Text>
+        </View>
+        <View style={trc.badges}>
+          <View style={[trc.badge, { backgroundColor: CONF_COLORS[readiness.confidence] + "22" }]}>
+            <Text style={[trc.badgeText, { color: CONF_COLORS[readiness.confidence] }]}>
+              {readiness.confidence.charAt(0).toUpperCase() + readiness.confidence.slice(1)} conf.
+            </Text>
+          </View>
+          <View style={[trc.badge, { backgroundColor: Colors.light.creamMid }]}>
+            <Text style={[trc.badgeText, { color: Colors.light.textMuted }]}>
+              {QUALITY_LABELS[readiness.dataQuality]}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <Text style={trc.desc}>{display.description}</Text>
+
+      <View style={trc.reasoningList}>
+        {readiness.reasoning.map((r, i) => (
+          <View key={i} style={trc.reasoningRow}>
+            <View style={[trc.reasoningDot, { backgroundColor: display.color }]} />
+            <Text style={trc.reasoningText}>{r}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const trc = StyleSheet.create({
+  card: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderLeftWidth: 3,
+    padding: 14,
+    marginBottom: 12,
+  },
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 6,
+  },
+  layer: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    color: Colors.light.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  mode: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
+    letterSpacing: -0.2,
+  },
+  badges: { gap: 4, alignItems: "flex-end" },
+  badge: {
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  badgeText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+  },
+  desc: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    marginBottom: 10,
+    lineHeight: 17,
+  },
+  reasoningList: { gap: 5 },
+  reasoningRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  reasoningDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    marginTop: 5,
+    flexShrink: 0,
+  },
+  reasoningText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    flex: 1,
+    lineHeight: 17,
+  },
+});
+
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const { today, blocksForDate, snapshotForDate, state } = useApp();
@@ -187,6 +323,9 @@ export default function TodayScreen() {
 
         {/* Day mode card */}
         {dayMode && <DayModeCard mode={dayMode} />}
+
+        {/* Training readiness */}
+        <TrainingReadinessCard />
 
         {/* Progress summary */}
         {totalCount > 0 && (

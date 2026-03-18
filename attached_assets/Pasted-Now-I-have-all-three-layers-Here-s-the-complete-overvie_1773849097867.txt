@@ -1,0 +1,122 @@
+Now I have all three layers. Here's the complete overview:
+
+The 8 Nutrition Phases
+These are your dietary regime — the macronutrient strategy you're currently running. You select one in the qualitative log each day to record which protocol was active. They are not about physical performance directly; they describe how you're fueling and what the fuel distribution is doing.
+
+Base
+Your stabilized bulk baseline. Not pushing surplus hard, not cutting anything. This is the maintenance-adjacent operating point you return to between deliberate pushes — a controlled steady state where nothing is being forced in either direction.
+
+Carb-Up
+A deliberate increase in carbohydrate intake. The intent is to increase fuel pressure and raise training support capacity. Used when you want to drive harder training quality, fill glycogen more aggressively, or transition into a growth phase.
+
+Carb-Cut
+A reduction in carbohydrate intake specifically. The emphasis shifts toward careful fuel allocation — the body has less carbohydrate fuel to work with, which forces better nutrient routing. Often used to reduce body fat without touching dietary fat, or as a step down before a more aggressive cut.
+
+Fat-Cut
+A reduction in dietary fat specifically. The goal is reducing excess storage pressure and improving how nutrients are directed — less dietary fat means less fat available for storage and more pressure toward other substrates. Same routing logic as Carb-Cut but the dietary lever being pulled is different.
+
+Recomp
+Slow body recomposition — simultaneously trying to route nutrients toward muscle while keeping fat stable or declining. A genuinely difficult physiological state that requires precise intake. Used when you want to shift body composition without committing to a full bulk or cut cycle. Progress is slower than dedicated phases but the two goals are both being served.
+
+Deload
+Recovery nutrition. Caloric and training strain is reduced to allow CNS recovery, restore receptor sensitivity, and give the body time to consolidate adaptations. This is not a cut — it's intentional reduction of the stimulus to make the system more responsive to the next one.
+
+Diet Break
+A metabolic reset. When you've been in a sustained deficit and adaptation has started to suppress metabolic output (hunger hormones disrupted, performance declining, mood suppressed), a diet break brings intake back up to maintenance to relieve that adaptive suppression and restore output. Different from Deload in that the training doesn't necessarily change — the nutrition is what gets reset.
+
+Peak Bulk
+The most aggressive growth phase. Highest caloric surplus, highest carbohydrate pressure, strongest hypertrophy drive. You are pushing the system as hard as it will accept. Fatigue and fat gain risk are both highest here. Used when the goal is maximum muscle growth over a defined window before entering a correction phase.
+
+The 7 Daily Meal Slots
+These are the timing-based positions meals occupy within a day, independent of which nutrition phase you're running. Every nutrition phase has its own template for each slot — the combination (phase_slot, e.g. base_precardio) determines exactly what you eat.
+
+Slot	Role
+Pre-Cardio	Light activation fuel — minimal digestive drag, just enough to prime readiness and wake-up response
+Post-Cardio	Recovery and substrate reset — begins restoring what cardio depleted, sets the metabolic tone for the morning
+Mid-Morning	Stable anchor meal — steady, controlled, maintenance and routing oriented, no extremes
+Pre-Lift	Explicit training fuel — carbohydrates and protein timed before major tension work
+Post-Lift	Training recovery feed — absorb the training stimulus and begin supercompensation
+Evening	Grounding and overnight support — nervous system settling, slower proteins, sets overnight restoration
+Protein Reserve	Flexible buffer — used as needed to hit daily protein targets without being tied to a specific timing slot
+The 8 Orbital Phases
+This is the physiological interpretation layer — completely separate from what you're eating. The orbital phase describes what is happening inside the body at a cellular and systemic level: where it is in a growth, recovery, adaptation, or expression cycle. The nutrition-to-orbital translator table maps which nutrition phase most likely corresponds to which orbital state, but the orbital phase is a read — not something you directly select.
+
+Think of orbital phases as answering: what is the body actually doing right now as a biological system?
+
+1 — Priming
+The system is being prepared and readied. Light activation, low digestive drag, no high-demand state yet. Corresponds to the early morning pre-training window. The body is receptive but not yet loaded.
+
+2 — Loading
+Force production is rising. Fuel input is increasing to support training tension. The system is being driven upward toward a peak output state. This is the build-up before the hardest work.
+
+3 — Accumulation
+The training stimulus is being absorbed. Substrates are being restored, muscle damage is beginning to be addressed, and the body is processing what the training session asked of it. Recovery is underway but is not complete.
+
+4 — Saturation
+Maximum cellular stress state. Carbohydrate pressure is highest, hypertrophy drive is at its peak. The system is fully loaded and under the most growth stimulus. This is the physiological state that corresponds to Peak Bulk — the body is being pushed to its capacity to adapt upward.
+
+5 — Partitioning
+The body is actively directing nutrients — routing carbohydrates and protein toward muscle rather than fat storage. This is an efficiency phase rather than a volume phase. Associated with Carb-Cut, Fat-Cut, and Recomp, where the emphasis is on where nutrients go rather than how many are coming in.
+
+6 — Resensitization
+Receptor sensitivity is being restored and the CNS is recovering. Overnight and deload periods fall here. After sustained loading, tissues and receptors become less responsive; resensitization is the body restoring its ability to respond strongly to the next stimulus.
+
+7 — Rebound
+Supercompensation expression — the body is relieving adaptive suppression and restoring output capacity. This is what happens after a deload or diet break when the suppressed systems bounce back. Strength often feels elevated in this phase, energy returns, and the body is more responsive than it was mid-deload.
+
+8 — Expression
+The system has stabilized at a higher baseline. Not pushing, not resetting — operating in a controlled, capable state. This corresponds to the Base phase: you've absorbed the previous cycle, you're not yet forcing the next one, and the body is expressing the adaptation that was built.
+
+How the Two Systems Connect
+The translator table is what connects nutrition phase → orbital interpretation. It's a lookup layer, not a merge of the concepts. Here's the full mapping:
+
+Nutrition Phase	Primary Orbital	Secondary Orbital	Logic
+Base	Expression	Priming	Stabilized and capable, not forcing
+Carb-Up	Loading	Accumulation	Fuel rising, drifts toward absorption if sustained
+Carb-Cut	Partitioning	Resensitization	Less fuel, more careful routing
+Fat-Cut	Partitioning	Resensitization	Same routing logic, different dietary lever
+Recomp	Partitioning	Expression	Routing toward muscle, stable overall state
+Deload	Resensitization	Priming	Restoring sensitivity, becoming ready again
+Diet Break	Rebound	Expression	Suppression relief, stabilizing after
+Peak Bulk	Saturation	Accumulation	Most aggressive push, highest fatigue risk
+The secondary orbital is what the state tends toward if the nutrition phase is sustained or if training intensity shifts — for example, Carb-Up sits in Loading but drifts toward Accumulation if you stay there long enough without a corresponding deload.
+This is a clear build directive. Let me read the existing insights tab and check available packages before writing anything:
+react-native-svg is already installed. Now I'll build the full trend layer — engine, types, and the updated Insights screen — all at once:
+Now rewrite insights.tsx with the full Trends section:
+Clean compile. Let me restart to pick up the new engine file:
+Clean — 1461 modules compiled (up from 1438, exactly the new engine file), zero errors.
+
+Here's exactly what was built:
+
+What was implemented
+engine/trendEngine.ts — new engine file
+DailyIndex — the time series backbone. One record per day, combining both logs without merging them. Has six fields: three from qualitative (the derived scores), three from quantitative (device data). Days with zero data are skipped entirely.
+
+buildDailyIndices(snapshots, quantLogs, windowDays) — iterates the window day by day, joins matching qualitative and quantitative records by date, and returns a sparse array of only the days that have at least one entry.
+
+buildTrendSignals(indices) — extracts all six named signals with their data points, computes confidence (high = ≥5 points, low = <5), the latest value, and the total delta from the window's start to end.
+
+detectInterpretations(indices) — runs five cross-layer pattern rules and returns any that fire:
+
+Alignment — Recovery Need rising AND HRV declining together → "body and self-report agree"
+Alignment — Recovery Need rising AND RHR rising together → "CNS load confirmed by two signals"
+Mismatch — Recovery Need low (you feel fine) but HRV declining → "hidden fatigue signal"
+Mismatch — Recovery Need elevated but HRV stable → "load is cognitive/emotional, not physiological"
+Drift — HRV declining 3+ consecutive logged days → threshold for intervention warning
+Drift — Recovery Need rising 3+ consecutive logged days → accumulation compounding
+Insights tab — new Trends section
+Sits between the 7-day stats and Recommendations, so it doesn't displace anything.
+
+7d / 14d toggle — pill toggle in the section header. Changing it rebuilds the index and all signals immediately.
+
+6 signal cards in a 2-column grid, each showing:
+
+Signal name + confidence badge (green = high, amber = low)
+Current value in large text, colored by signal type
+Delta chip — signed delta from window start to end, green if improving, rose if worsening (using the higherIsWorse flag per signal — HRV going up is green, Recovery Need going up is rose)
+SVG sparkline drawn from actual data points only — lines break when there's a gap of more than one day between consecutive points
+Cross-layer interpretation cards — only appear when the pattern detection fires. Each shows the type (Alignment / Mismatch / Drift) in its own color with an icon, a title, and a one-paragraph description of what the combination means.
+
+Legend — explains the confidence colors and the gap-in-line convention.
+
+Empty state — clean placeholder when neither log has been used yet, with a message telling you the minimum threshold (2 days across either log).
