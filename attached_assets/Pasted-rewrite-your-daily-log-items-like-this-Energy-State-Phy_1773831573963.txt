@@ -1,0 +1,254 @@
+rewrite your daily log items like this
+
+Energy & State
+
+Physical energy
+
+Question: How physically energized does my body feel today?
+1: drained / heavy
+3: usable but average
+5: energized / ready to move
+
+Motivation
+
+Question: How much do I feel like engaging with the day?
+1: resistant / no drive
+3: can do it with effort
+5: pulled toward action
+
+Mental fog
+
+Question: How mentally clouded or unclear do I feel?
+1: clear / sharp
+3: somewhat foggy
+5: very foggy / hard to think
+
+For this one, keep in mind it is reversed relative to “good.” That is okay, but be consistent.
+
+Emotional stability
+
+Question: How emotionally steady and regulated do I feel?
+1: reactive / fragile
+3: mixed / somewhat steady
+5: stable / grounded
+
+⸻
+
+Neuro Pull
+
+Novelty hunger
+
+Question: How much do I want stimulation, change, or something new?
+1: want sameness / low curiosity
+3: open to some novelty
+5: strongly craving novelty or stimulation
+
+Structure hunger
+
+Question: How much do I want predictability, order, and a known plan?
+1: fine with flexibility
+3: want some structure
+5: strongly need structure and clarity
+
+Pressure / compression seeking
+
+Question: How much do I want grounding sensory input like pressure, compression, cocooning, heaviness?
+1: no desire for it
+3: would be somewhat helpful
+5: strongly craving it / would help regulate me
+
+⸻
+
+Sensory
+
+Sensory load baseline
+
+Question: How loaded or easily overloaded does my system feel before the day really gets going?
+1: spacious / low load
+3: noticeable background strain
+5: already loaded / low sensory capacity
+
+Social load
+
+Question: How costly does interaction with people feel today?
+1: social contact feels easy
+3: manageable but tiring
+5: strongly draining / want to avoid
+
+Noise aversion
+
+Question: How much do sound and overlapping noise bother me today?
+1: not very bothersome
+3: noticeably irritating
+5: highly aversive / overwhelming
+
+Light aversion
+
+Question: How much do brightness or harsh lighting bother me today?
+1: not very bothersome
+3: noticeably irritating
+5: highly aversive / overwhelming
+
+Texture sensitivity
+
+Question: How much are fabric, surfaces, food textures, or body sensations bothering me today?
+1: not very bothersome
+3: noticeable / picky
+5: highly disruptive / hard to ignore
+
+⸻
+
+The biggest improvement: use “felt statement” wording
+
+Instead of abstract labels alone, each item can open from a sentence stem.
+
+For example:
+	•	Physical energy → “My body feels…”
+	•	Motivation → “Starting things feels…”
+	•	Mental fog → “My thinking feels…”
+	•	Novelty hunger → “I want today to feel…”
+	•	Structure hunger → “I need today to be…”
+	•	Noise aversion → “Noise feels…”
+
+That makes scoring much easier.
+
+Example:
+
+Structure hunger
+
+“My need for predictability today feels…”
+	•	1 = low
+	•	3 = moderate
+	•	5 = very high
+
+That is much more natural than just seeing the label.
+
+⸻
+
+One more important improvement
+
+Some of your scales are currently mixed between:
+	•	capacity
+	•	desire
+	•	aversion
+	•	symptom intensity
+
+That is okay, but you should visually separate them.
+
+Group them like this
+
+Capacity
+	•	physical energy
+	•	motivation
+	•	mental clarity
+	•	emotional stability
+
+Pull
+	•	novelty hunger
+	•	structure hunger
+	•	pressure/compression seeking
+
+Sensory burden
+	•	sensory load baseline
+	•	social load
+	•	noise aversion
+	•	light aversion
+	•	texture sensitivity
+
+That grouping makes the inner logic much clearer.
+
+⸻
+
+Best UI tweak
+
+Under every item, show the anchors in tiny text:
+
+Example:
+
+Physical energy
+drained · average · energized
+
+Mental fog
+clear · somewhat foggy · very foggy
+
+Structure hunger
+flexible is fine · some structure helps · need predictability
+
+This alone will dramatically reduce hesitation.
+
+⸻
+
+One subtle but important suggestion
+
+Try not to make yourself distinguish too much between 4 and 5.
+
+A good rule is:
+	•	1 = clearly low
+	•	2 = somewhat low
+	•	3 = medium
+	•	4 = high
+	•	5 = very high / dominant
+
+You do not need perfect precision.
+You need repeatable self-judgment.
+
+⸻
+
+My strongest recommendation
+
+For each scale, define a hidden check:
+
+“Would I notice this today without being asked?”
+
+If no, it is probably 1–2.
+If yes, it is probably 3.
+If it is shaping the day, it is 4–5.
+
+That makes the ratings much more intuitive.
+
+⸻
+
+If I were refining your exact screen text
+
+I would change the visible labels to this:
+
+Energy & State
+	•	Physical energy
+	•	drained · average · energized
+	•	Motivation
+	•	resistant · mixed · driven
+	•	Mental fog
+	•	clear · hazy · very foggy
+	•	Emotional stability
+	•	fragile · mixed · grounded
+
+Neuro Pull
+	•	Novelty hunger
+	•	want sameness · open to some novelty · craving stimulation
+	•	Structure hunger
+	•	fine with flexibility · some structure helps · need predictability
+	•	Pressure/compression seeking
+	•	not needed · somewhat helpful · strongly wanted
+
+Sensory
+	•	Sensory load baseline
+	•	low load · noticeable strain · already overloaded
+	•	Social load
+	•	easy · tiring · strongly costly
+	•	Noise aversion
+	•	tolerable · irritating · overwhelming
+	•	Light aversion
+	•	tolerable · irritating · overwhelming
+	•	Texture sensitivity
+	•	tolerable · noticeable · disruptive
+
+⸻
+
+The deeper rule
+
+You are not trying to capture objective truth.
+You are trying to capture:
+
+stable subjective signal
+
+That means cleaner anchors beat more scales.
