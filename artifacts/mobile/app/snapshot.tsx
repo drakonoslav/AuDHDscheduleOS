@@ -89,6 +89,9 @@ export default function SnapshotScreen() {
         <Text style={styles.intro}>
           Scores the engine uses to distinguish a schedule mismatch from a discipline failure. Answer quickly — first instinct is more repeatable than careful reasoning.
         </Text>
+        <Text style={styles.polarityRule}>
+          Rate based on how noticeable this feels today — not how good or bad it is. 1 = low · 5 = high across all scales.
+        </Text>
 
         {/* ── Sleep ─────────────────────────────────────────────────────── */}
         <SectionHeader title="Sleep" />
@@ -123,8 +126,8 @@ export default function SnapshotScreen() {
           onChange={setMotivation}
         />
         <RatingSlider
-          label="Mental fog — my thinking feels…"
-          sublabel="clear · hazy · very foggy"
+          label="Mental clarity — my thinking clarity feels…"
+          sublabel="clear · slightly foggy · very foggy"
           value={mentalFog}
           onChange={setMentalFog}
           inverted
@@ -154,7 +157,7 @@ export default function SnapshotScreen() {
           onChange={setStructureHunger}
         />
         <RatingSlider
-          label="Pressure / compression seeking — right now this would feel…"
+          label="Pressure / compression seeking — my body wants this…"
           sublabel="not needed · somewhat helpful · strongly wanted"
           value={pressureSeek}
           onChange={setPressureSeek}
@@ -163,7 +166,7 @@ export default function SnapshotScreen() {
         {/* ── Sensory ───────────────────────────────────────────────────── */}
         <SectionHeader
           title="Sensory"
-          note="How much capacity your nervous system has before the day has asked anything of it."
+          note="How loaded your system already feels before the day starts."
         />
         <RatingSlider
           label="Sensory load baseline — my system already feels…"
@@ -275,8 +278,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.creamMid,
     borderRadius: 10,
     padding: 12,
-    marginBottom: 4,
+    marginBottom: 6,
     lineHeight: 19,
+  },
+  polarityRule: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    color: Colors.light.textMuted,
+    textAlign: "center",
+    marginBottom: 4,
+    letterSpacing: 0.1,
   },
   sectionBlock: {
     marginTop: 22,
