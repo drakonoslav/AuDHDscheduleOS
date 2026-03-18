@@ -1,0 +1,108 @@
+I’m close to publishing, and priority one is data preservation.
+
+I need a full manual-data export / import failsafe so that if the app is republished, storage is reset, or something goes wrong, I do not lose months or years of entries.
+
+This is not a redesign of data entry.
+Keep all existing app entry and flows exactly as they are.
+This is a preservation layer only.
+
+Core requirement:
+Every manually entered record in the app must be exportable off-device in a format that can later be re-imported to fully restore the app state and allow the app to compute the exact same derived scores, trends, recommendations, and decision logic as before.
+
+I want export + import for all manually entered domains:
+1. Plan block templates
+2. Regular schedule blocks / block template entries
+3. Qualitative daily log entries
+4. Quantitative daily log entries
+5. Training cardio manual entries
+6. Training lift manual entries
+7. Any related manual template/config records needed so the app can resume exactly where it left off
+
+Important distinction:
+- Export the raw manual entries and required metadata
+- Do not rely only on derived outputs
+- On re-import, the app should be able to recompute the same decision matrix from the raw data
+- It is okay to also export derived fields, but raw user-entered values are the source of truth
+
+I need a solid restore model:
+- export data off device into a convenient file
+- later import that file
+- app restores all records
+- app rebuilds state
+- app recomputes all derived logic
+- app continues exactly where I left off
+
+Please design this as a durable backup/restore system, not just a casual export.
+
+What I want you to build:
+1. A versioned export format
+2. Export action from inside the app
+3. Import action from inside the app
+4. Validation before import
+5. Safe merge / replace behavior
+6. Recompute pipeline after import
+7. Clear user confirmation messaging
+8. Error handling if a file is malformed or from an older schema version
+
+Export format requirements:
+- Human-inspectable if possible
+- Strongly structured
+- Easy for the app to re-upload and restore
+- Include schema/app version metadata
+- Include export timestamp
+- Include all raw manual records
+- Include IDs and dates needed to preserve relationships
+- Include enough structure that future migrations are possible
+
+Preferred export format:
+- Single JSON backup file as the primary full-fidelity export/import format
+- JSON should contain all manual-entry tables/collections in one versioned object
+- This should be the canonical restore format
+
+Optional but desirable:
+- Also support CSV bundle export for human analysis, but JSON is the canonical restore/import format
+- If CSV is added, it should be secondary and not the only backup path
+
+Import requirements:
+- User selects a backup file
+- App validates version + shape
+- Show summary before import:
+  - how many qualitative entries
+  - how many quantitative entries
+  - how many schedule blocks
+  - how many templates
+  - how many cardio/lift entries
+- Then give options:
+  - Replace all existing app data with backup
+  - Merge backup into existing data by ID/date rules
+- If merge is risky or ambiguous, explain exactly how conflicts are resolved
+- After import, recompute all derived values and refresh the app
+
+Data integrity requirements:
+- Preserve IDs where possible
+- Preserve timestamps/dates
+- Preserve template relationships
+- Preserve nutrition phase IDs, orbital-related stored inputs, schedule tags, ratings, sensory flags, training ratings, etc.
+- Preserve enough raw structure so future app logic can still operate correctly
+- The restored app should be able to generate the same conclusions from the same inputs
+
+Safety requirements:
+- Never silently overwrite data
+- Always confirm before destructive import
+- Always show success/failure summary
+- If import fails halfway, do not leave partial corrupted state
+- Use transactional logic if possible: validate first, then commit all at once
+
+Technical request:
+Please first propose the exact backup schema before implementing.
+I want:
+1. the top-level JSON structure
+2. every collection/table included
+3. versioning strategy
+4. replace vs merge logic
+5. migration strategy for future schema changes
+6. recomputation flow after import
+7. where this fits with current AsyncStorage state
+
+Please optimize for long-term durability and emotional safety.
+I want to know that if a republish or update goes wrong, I can restore everything and continue as if nothing was lost.
