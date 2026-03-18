@@ -130,7 +130,7 @@ export default function LogScreen() {
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push("/training-log");
+            router.push({ pathname: "/training-log", params: { date: selectedDate } });
           }}
           style={({ pressed }) => [styles.trainingBtn, pressed && { opacity: 0.7 }]}
         >

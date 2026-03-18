@@ -108,6 +108,18 @@ export default function BlockDetailScreen() {
         <Text style={styles.metaTime}>{block.plannedStart} – {block.plannedEnd}</Text>
         <PhaseTag phase={block.phaseTag} small />
         <Text style={styles.metaType}>{block.blockType}</Text>
+        {(block.blockType === "cardio" || block.blockType === "lift") && (
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({ pathname: "/training-log", params: { blockId: block.id, date: block.date } });
+            }}
+            style={({ pressed }) => [styles.trainingShortcut, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="zap" size={12} color={Colors.light.surface} />
+            <Text style={styles.trainingShortcutText}>Log Training</Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Status row */}
@@ -301,6 +313,8 @@ const styles = StyleSheet.create({
   blockMeta: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 10 },
   metaTime: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textMuted },
   metaType: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textMuted, textTransform: "capitalize" },
+  trainingShortcut: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: Colors.light.tint, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, marginLeft: 4 },
+  trainingShortcutText: { fontFamily: "Inter_600SemiBold", fontSize: 11, color: Colors.light.surface },
   statusRow: { flexGrow: 0, marginBottom: 8 },
   statusRowContent: { paddingHorizontal: 16, gap: 6 },
   statusChip: {
