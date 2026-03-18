@@ -95,13 +95,16 @@ export default function MealsScreen() {
               <View style={styles.orbitalItem}>
                 <Text style={styles.orbitalTag}>Primary</Text>
                 <Text style={styles.orbitalName}>{orbital.orbitalPhaseName}</Text>
-                <Text style={styles.orbitalDesc} numberOfLines={2}>{orbital.description}</Text>
+                <Text style={styles.orbitalDesc}>{orbital.description}</Text>
               </View>
               {orbitalAlt && (
                 <View style={[styles.orbitalItem, styles.orbitalItemAlt]}>
                   <Text style={styles.orbitalTag}>Secondary</Text>
                   <Text style={[styles.orbitalName, { color: Colors.light.textSecondary }]}>
                     {orbitalAlt.orbitalPhaseName}
+                  </Text>
+                  <Text style={[styles.orbitalDesc, { color: Colors.light.textSecondary }]}>
+                    {orbitalAlt.description}
                   </Text>
                 </View>
               )}
