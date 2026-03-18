@@ -62,30 +62,66 @@ function todayStr(): string {
 // ─── Web file I/O ─────────────────────────────────────────────────────────────
 
 async function webExport(json: string, filename: string): Promise<void> {
-  const blob = new Blob([json], { type: "application/json" });
-
-  // Web Share API — works natively on iOS Safari 15+ (triggers Files/AirDrop sheet)
-  if (typeof navigator !== "undefined" && navigator.share) {
+  // 1. Web Share API with file (iOS Safari 15+ / Chrome Android — triggers
+  //    native share sheet with AirDrop, Files, Notes, etc.)
+  if (typeof navigator !== "undefined" && typeof window !== "undefined" && navigator.share) {
     try {
+      const blob = new Blob([json], { type: "application/json" });
       const file = new File([blob], filename, { type: "application/json" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: "AuDHD Backup" });
         return;
       }
-    } catch (shareErr) {
-      // User cancelled or share failed — fall through to download link
+    } catch (shareFileErr: any) {
+      // AbortError = user cancelled = treat as handled
+      if (shareFileErr?.name === "AbortError") return;
+      // Otherwise fall through to next strategy
+    }
+
+    // 2. Web Share API with text (iOS Safari 12.1+ — share sheet, user saves
+    //    text to Notes/Files/Messages)
+    try {
+      await navigator.share({ title: filename, text: json });
+      return;
+    } catch (shareTextErr: any) {
+      if (shareTextErr?.name === "AbortError") return;
+      // Fall through
     }
   }
 
-  // Fallback: anchor download (works on desktop browsers)
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  // 3. Anchor download (desktop Chrome/Firefox — not supported on iOS Safari)
+  if (typeof document !== "undefined") {
+    try {
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return;
+    } catch (_) {}
+  }
+
+  // 4. Clipboard fallback — copy JSON, user pastes into Notes / Files
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(json);
+      Alert.alert(
+        "Backup copied",
+        "Your backup JSON has been copied to the clipboard. Paste it into Notes or Files to save it."
+      );
+      return;
+    } catch (_) {}
+  }
+
+  // 5. Last resort — open in new tab (user can long-press Save)
+  if (typeof window !== "undefined") {
+    const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(json);
+    window.open(dataUri, "_blank");
+  }
 }
 
 function webImport(): Promise<string | null> {
@@ -162,43 +198,49 @@ export default function BackupScreen() {
   const handleExport = async () => {
     try {
       setExporting(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch (_) {}
 
       const payload = buildBackup(state);
       const json = JSON.stringify(payload, null, 2);
       const filename = `audhd-backup-${todayStr()}.json`;
 
-      const isWebEnv = typeof document !== "undefined";
-      if (isWebEnv) {
-        await webExport(json, filename);
-      } else {
-        const {
-          writeAsStringAsync,
-          cacheDirectory,
-          EncodingType,
-        } = await import("expo-file-system");
-        const { isAvailableAsync, shareAsync } = await import("expo-sharing");
-        const path = (cacheDirectory ?? "") + filename;
-        await writeAsStringAsync(path, json, { encoding: EncodingType.UTF8 });
-        const canShare = await isAvailableAsync();
-        if (canShare) {
-          await shareAsync(path, {
-            mimeType: "application/json",
-            dialogTitle: "Save backup file",
-            UTI: "public.json",
-          });
-        } else {
-          Alert.alert("Sharing unavailable", "File written to app cache.");
+      // Attempt native share (Expo Go / standalone native builds only).
+      // Wrapped in try-catch: if native modules are unavailable (web bundle),
+      // we fall through to webExport regardless of Platform.OS value.
+      let nativeHandled = false;
+      if (Platform.OS !== "web") {
+        try {
+          const { writeAsStringAsync, cacheDirectory } = await import("expo-file-system");
+          const { isAvailableAsync, shareAsync } = await import("expo-sharing");
+          const path = (cacheDirectory ?? "") + filename;
+          // Use the literal "utf8" — avoids accessing EncodingType which may be
+          // undefined in web-bundled stubs of expo-file-system.
+          await writeAsStringAsync(path, json, { encoding: "utf8" as any });
+          const canShare = await isAvailableAsync();
+          if (canShare) {
+            await shareAsync(path, {
+              mimeType: "application/json",
+              dialogTitle: "Save backup file",
+              UTI: "public.json",
+            });
+            nativeHandled = true;
+          }
+        } catch (_nativeErr) {
+          // Native modules not available in this environment — fall through.
         }
       }
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (!nativeHandled) {
+        await webExport(json, filename);
+      }
+
+      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
       setExportSuccess({
         exportedAt: payload._meta.exportedAt,
         counts: getBackupSummary(payload).counts,
       });
     } catch (e) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch (_) {}
       Alert.alert("Export failed", String(e));
     } finally {
       setExporting(false);
