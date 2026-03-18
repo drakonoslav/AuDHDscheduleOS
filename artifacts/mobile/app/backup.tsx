@@ -9,6 +9,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -59,70 +60,7 @@ function todayStr(): string {
   return new Date().toISOString().split("T")[0]!;
 }
 
-// ─── Web file I/O ─────────────────────────────────────────────────────────────
-
-async function webExport(json: string, filename: string): Promise<void> {
-  // 1. Web Share API with file (iOS Safari 15+ / Chrome Android — triggers
-  //    native share sheet with AirDrop, Files, Notes, etc.)
-  if (typeof navigator !== "undefined" && typeof window !== "undefined" && navigator.share) {
-    try {
-      const blob = new Blob([json], { type: "application/json" });
-      const file = new File([blob], filename, { type: "application/json" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: "AuDHD Backup" });
-        return;
-      }
-    } catch (shareFileErr: any) {
-      // AbortError = user cancelled = treat as handled
-      if (shareFileErr?.name === "AbortError") return;
-      // Otherwise fall through to next strategy
-    }
-
-    // 2. Web Share API with text (iOS Safari 12.1+ — share sheet, user saves
-    //    text to Notes/Files/Messages)
-    try {
-      await navigator.share({ title: filename, text: json });
-      return;
-    } catch (shareTextErr: any) {
-      if (shareTextErr?.name === "AbortError") return;
-      // Fall through
-    }
-  }
-
-  // 3. Anchor download (desktop Chrome/Firefox — not supported on iOS Safari)
-  if (typeof document !== "undefined") {
-    try {
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      return;
-    } catch (_) {}
-  }
-
-  // 4. Clipboard fallback — copy JSON, user pastes into Notes / Files
-  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(json);
-      Alert.alert(
-        "Backup copied",
-        "Your backup JSON has been copied to the clipboard. Paste it into Notes or Files to save it."
-      );
-      return;
-    } catch (_) {}
-  }
-
-  // 5. Last resort — open in new tab (user can long-press Save)
-  if (typeof window !== "undefined") {
-    const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(json);
-    window.open(dataUri, "_blank");
-  }
-}
+// ─── (no browser-specific file I/O — handled via React Native Share / modal) ──
 
 function webImport(): Promise<string | null> {
   return new Promise((resolve) => {
@@ -173,6 +111,7 @@ export default function BackupScreen() {
   // Export state
   const [exporting, setExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState<ExportSuccess | null>(null);
+  const [jsonModal, setJsonModal] = useState<{ visible: boolean; json: string }>({ visible: false, json: "" });
 
   // Import state
   const [importing, setImporting] = useState(false);
@@ -204,41 +143,50 @@ export default function BackupScreen() {
       const json = JSON.stringify(payload, null, 2);
       const filename = `audhd-backup-${todayStr()}.json`;
 
-      // Attempt native share (Expo Go / standalone native builds only).
-      // Wrapped in try-catch: if native modules are unavailable (web bundle),
-      // we fall through to webExport regardless of Platform.OS value.
-      let nativeHandled = false;
+      // ── Strategy 1: Native file share via expo-file-system + expo-sharing
+      //    (Expo Go on iOS/Android — writes a real .json file then shares it)
       if (Platform.OS !== "web") {
         try {
           const { writeAsStringAsync, cacheDirectory } = await import("expo-file-system");
           const { isAvailableAsync, shareAsync } = await import("expo-sharing");
           const path = (cacheDirectory ?? "") + filename;
-          // Use the literal "utf8" — avoids accessing EncodingType which may be
-          // undefined in web-bundled stubs of expo-file-system.
           await writeAsStringAsync(path, json, { encoding: "utf8" as any });
-          const canShare = await isAvailableAsync();
-          if (canShare) {
+          if (await isAvailableAsync()) {
             await shareAsync(path, {
               mimeType: "application/json",
               dialogTitle: "Save backup file",
               UTI: "public.json",
             });
-            nativeHandled = true;
+            try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
+            setExportSuccess({ exportedAt: payload._meta.exportedAt, counts: getBackupSummary(payload).counts });
+            return;
           }
-        } catch (_nativeErr) {
-          // Native modules not available in this environment — fall through.
+        } catch (_) {
+          // Native modules unavailable — fall through
         }
       }
 
-      if (!nativeHandled) {
-        await webExport(json, filename);
+      // ── Strategy 2: React Native Share (cross-platform, works in web build)
+      //    On iOS Safari this opens the native share sheet (Notes, AirDrop, etc.)
+      try {
+        const result = await Share.share({ message: json, title: filename });
+        if (result.action !== "dismissedAction") {
+          try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
+          setExportSuccess({ exportedAt: payload._meta.exportedAt, counts: getBackupSummary(payload).counts });
+          return;
+        }
+        // User dismissed the share sheet — still show success since data is intact
+        setExportSuccess({ exportedAt: payload._meta.exportedAt, counts: getBackupSummary(payload).counts });
+        return;
+      } catch (_shareErr) {
+        // Share not available — fall through to modal
       }
 
+      // ── Strategy 3: JSON viewer modal
+      //    Show the raw JSON in a selectable text area so the user can copy it.
+      setJsonModal({ visible: true, json });
       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
-      setExportSuccess({
-        exportedAt: payload._meta.exportedAt,
-        counts: getBackupSummary(payload).counts,
-      });
+      setExportSuccess({ exportedAt: payload._meta.exportedAt, counts: getBackupSummary(payload).counts });
     } catch (e) {
       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch (_) {}
       Alert.alert("Export failed", String(e));
@@ -633,6 +581,32 @@ export default function BackupScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── JSON viewer modal (last-resort export fallback) ──────────────── */}
+      <Modal
+        visible={jsonModal.visible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setJsonModal({ visible: false, json: "" })}
+      >
+        <View style={styles.jsonModalContainer}>
+          <View style={styles.jsonModalHeader}>
+            <Text style={styles.jsonModalTitle}>Backup JSON</Text>
+            <Pressable
+              onPress={() => setJsonModal({ visible: false, json: "" })}
+              style={styles.jsonModalClose}
+            >
+              <Feather name="x" size={20} color={Colors.light.textSecondary} />
+            </Pressable>
+          </View>
+          <Text style={styles.jsonModalHint}>
+            Select all the text below, copy it, and paste it into Notes or Files to save your backup.
+          </Text>
+          <ScrollView style={styles.jsonScrollView} contentContainerStyle={{ padding: 12 }}>
+            <Text selectable style={styles.jsonText}>{jsonModal.json}</Text>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -932,4 +906,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalConfirmText: { fontFamily: "Inter_700Bold", fontSize: 14, color: Colors.light.surface },
+
+  jsonModalContainer: { flex: 1, backgroundColor: Colors.light.background },
+  jsonModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  jsonModalTitle: { fontFamily: "Inter_700Bold", fontSize: 18, color: Colors.light.text },
+  jsonModalClose: { padding: 4 },
+  jsonModalHint: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    lineHeight: 18,
+    marginHorizontal: 16,
+    marginVertical: 12,
+  },
+  jsonScrollView: { flex: 1, backgroundColor: Colors.light.creamMid, marginHorizontal: 16, marginBottom: 16, borderRadius: 8 },
+  jsonText: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    color: Colors.light.text,
+    lineHeight: 16,
+  },
 });
