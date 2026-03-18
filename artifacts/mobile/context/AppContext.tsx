@@ -11,6 +11,7 @@ import type {
   BlockTemplate,
   DailyStateSnapshot,
   NutritionPhaseId,
+  QuantitativeDailyLog,
   ScheduleBlock,
   TrainingLog,
   WeeklyRecommendation,
@@ -44,6 +45,9 @@ interface AppContextType {
   updateBlockTemplate: (id: string, updates: Partial<BlockTemplate>) => void;
   removeBlockTemplate: (id: string) => void;
   applyTemplatesToDate: (date: string) => void;
+  // Quantitative logs
+  upsertQuantitativeLog: (log: QuantitativeDailyLog) => void;
+  quantitativeLogForDate: (date: string) => QuantitativeDailyLog | undefined;
   // Onboarding
   completeOnboarding: (phaseId: NutritionPhaseId) => void;
 }
@@ -63,6 +67,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     blocks: [],
     snapshots: [],
     trainingLogs: [],
+    quantitativeLogs: [],
     recommendations: [],
     blockTemplates: [],
     currentNutritionPhaseId: "base",
@@ -280,6 +285,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state.blockTemplates, state.blocks, updateState]
   );
 
+  // ─── Quantitative logs ─────────────────────────────────────────
+  const upsertQuantitativeLog = useCallback(
+    (log: QuantitativeDailyLog) => {
+      updateState((s) => {
+        const existing = (s.quantitativeLogs ?? []).findIndex((l) => l.date === log.date);
+        if (existing >= 0) {
+          const next = [...(s.quantitativeLogs ?? [])];
+          next[existing] = log;
+          return { ...s, quantitativeLogs: next };
+        }
+        return { ...s, quantitativeLogs: [...(s.quantitativeLogs ?? []), log] };
+      });
+    },
+    [updateState]
+  );
+
+  const quantitativeLogForDate = useCallback(
+    (date: string) => (state.quantitativeLogs ?? []).find((l) => l.date === date),
+    [state.quantitativeLogs]
+  );
+
   // ─── Onboarding ────────────────────────────────────────────────
   const completeOnboarding = useCallback(
     (phaseId: NutritionPhaseId) => {
@@ -314,6 +340,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateBlockTemplate,
         removeBlockTemplate,
         applyTemplatesToDate,
+        upsertQuantitativeLog,
+        quantitativeLogForDate,
         completeOnboarding,
       }}
     >

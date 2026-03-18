@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AppState, ScheduleBlock } from "@/types";
+import type { AppState, QuantitativeDailyLog, ScheduleBlock } from "@/types";
+
+export type { QuantitativeDailyLog };
 
 const KEYS = {
   APP_STATE: "@audhd_os_state_v1",
@@ -9,6 +11,7 @@ const DEFAULT_STATE: AppState = {
   blocks: [],
   snapshots: [],
   trainingLogs: [],
+  quantitativeLogs: [],
   recommendations: [],
   blockTemplates: [],
   currentNutritionPhaseId: "base",

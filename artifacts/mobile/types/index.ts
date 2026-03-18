@@ -258,11 +258,38 @@ export interface BlockTemplate {
   notes?: string;
 }
 
+// ─── QUANTITATIVE DAILY LOG ────────────────────────────────────────────────────
+// Objective / measurable health data — separate from the qualitative snapshot
+export interface QuantitativeDailyLog {
+  id: string;
+  date: string;                     // YYYY-MM-DD
+  // Sleep stages (in minutes)
+  awakeMin?: number;
+  remMin?: number;
+  coreMin?: number;
+  deepMin?: number;
+  // Vitals
+  hrv?: number;                     // whole number
+  rhr?: number;                     // whole number (bpm)
+  // Body composition
+  weightLbs?: number;               // xxx.x
+  bodyFatPct?: number;              // xx.x
+  skeletalMusclePct?: number;       // xx.x
+  fatFreeMassLbs?: number;          // xxx.x
+  // Measurements
+  waistIn?: number;                 // increments of 0.25
+  // Hormone signal
+  hormoneDurationMin?: number;      // converted from hh:mm
+  hormoneQuantCount?: number;       // xx.x
+  hormoneQualCount?: number;        // xx.x
+}
+
 // ─── APP STATE ────────────────────────────────────────────────────────────────
 export interface AppState {
   blocks: ScheduleBlock[];
   snapshots: DailyStateSnapshot[];
   trainingLogs: TrainingLog[];
+  quantitativeLogs: QuantitativeDailyLog[];
   recommendations: WeeklyRecommendation[];
   blockTemplates: BlockTemplate[];
   currentNutritionPhaseId: NutritionPhaseId;

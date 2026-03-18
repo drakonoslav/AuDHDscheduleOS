@@ -96,6 +96,49 @@ function LogBlockCard({ block, onUpdate }: { block: ScheduleBlock; onUpdate: () 
   );
 }
 
+function QuantLogCard({ date }: { date: string }) {
+  const { quantitativeLogForDate } = useApp();
+  const existing = quantitativeLogForDate(date);
+  return (
+    <Pressable
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push({ pathname: "/quantitative-log", params: { date } });
+      }}
+      style={({ pressed }) => [
+        styles.snapshotCard,
+        pressed && { opacity: 0.85 },
+        existing ? styles.snapshotCardDone : undefined,
+      ]}
+    >
+      <View style={styles.snapshotLeft}>
+        <Feather
+          name={existing ? "check-circle" : "bar-chart-2"}
+          size={18}
+          color={existing ? Colors.light.structuring : Colors.light.textSecondary}
+        />
+        <View>
+          <Text style={styles.snapshotTitle}>
+            {existing ? "Quantitative Log Done" : "Quantitative Daily Log"}
+          </Text>
+          <Text style={styles.snapshotSub}>
+            {existing
+              ? [
+                  existing.hrv !== undefined ? `HRV ${existing.hrv}ms` : null,
+                  existing.rhr !== undefined ? `RHR ${existing.rhr}bpm` : null,
+                  existing.weightLbs !== undefined ? `${existing.weightLbs}lbs` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "Logged"
+              : "Sleep stages, HRV, RHR, body composition, waist, hormones"}
+          </Text>
+        </View>
+      </View>
+      <Feather name="chevron-right" size={16} color={Colors.light.textMuted} />
+    </Pressable>
+  );
+}
+
 export default function LogScreen() {
   const insets = useSafeAreaInsets();
   const { today, blocksForDate, snapshotForDate } = useApp();
@@ -170,7 +213,7 @@ export default function LogScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
       >
-        {/* Daily state snapshot prompt */}
+        {/* Qualitative daily log */}
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -186,17 +229,20 @@ export default function LogScreen() {
             />
             <View>
               <Text style={styles.snapshotTitle}>
-                {snapshot ? "Daily State Logged" : "Log Daily State"}
+                {snapshot ? "Qualitative Log Done" : "Qualitative Daily Log"}
               </Text>
               <Text style={styles.snapshotSub}>
                 {snapshot
                   ? `Sleep ${snapshot.sleepHours}h · Mode: ${snapshot.recommendedDayMode?.replace("_", " ") ?? "—"}`
-                  : "Sleep, energy, sensory, mood"}
+                  : "Sleep, energy, sensory, mood — subjective ratings"}
               </Text>
             </View>
           </View>
           <Feather name="chevron-right" size={16} color={Colors.light.textMuted} />
         </Pressable>
+
+        {/* Quantitative daily log */}
+        <QuantLogCard date={selectedDate} />
 
         {/* Stats row */}
         {blocks.length > 0 && (
