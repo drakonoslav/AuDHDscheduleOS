@@ -1,0 +1,271 @@
+Yes — and this is the place where I’d push back on Replit a bit.
+
+What it built is a good trend viewer, but not yet a true phase inference engine.
+
+Right now it trends only 6 signals:
+	•	ADHD pull
+	•	Autism pull
+	•	Recovery need
+	•	HRV
+	•	RHR
+	•	Deep sleep
+
+That is useful, but it is not enough if your real goal is:
+
+trend the manual entries themselves
+infer orbital-state drift
+and eventually recommend specific nutrition phases / meal templates
+
+So your instinct is right.
+
+What is missing
+
+Your manual entries are not just “journal data.”
+They are part of the control system.
+
+These should also be trendable over time:
+
+Qualitative manual entries
+	•	sleep hours
+	•	sleep quality
+	•	physical energy
+	•	motivation
+	•	mental clarity
+	•	emotional stability
+	•	novelty hunger
+	•	structure hunger
+	•	pressure/compression seeking
+	•	sensory load baseline
+	•	social load
+	•	noise aversion
+	•	light aversion
+	•	texture sensitivity
+	•	nutrition phase selected that day
+
+Quantitative manual/device entries
+	•	awake
+	•	rem
+	•	core
+	•	deep
+	•	HRV
+	•	RHR
+	•	weight
+	•	body fat %
+	•	skeletal muscle %
+	•	fat free mass
+	•	waist
+	•	hormone duration
+	•	hormone quantitative count
+	•	hormone qualitative intensity
+
+If those are not trended, the system cannot really learn:
+	•	what precedes Loading
+	•	what precedes Saturation
+	•	what precedes Resensitization
+	•	what meal template shifts actually help
+
+The key architectural point
+
+You should not trend only derived scores.
+
+You need three levels of trendability:
+
+1. Raw trends
+
+The original daily entries.
+
+Example:
+	•	novelty hunger rising
+	•	sleep quality falling
+	•	deep sleep rising
+	•	noise aversion rising
+	•	hormone duration rising
+
+2. Composite trends
+
+The calculated scores.
+
+Example:
+	•	ADHD pull
+	•	Autism pull
+	•	Recovery need
+
+3. State inference trends
+
+The interpreted system state.
+
+Example:
+	•	likely drifting toward Resensitization
+	•	repeated Accumulation signatures
+	•	Rebound window emerging
+
+That third layer is the real goal.
+
+What Replit built vs what you need
+
+What it built
+
+A cross-log trend dashboard.
+
+Good for:
+	•	seeing movement
+	•	spotting mismatch
+	•	basic planning context
+
+What you need
+
+A state-transition engine
+
+Good for:
+	•	inferring orbital drift
+	•	recommending nutrition phase shifts
+	•	recommending meal template shifts
+	•	later influencing lifting style
+
+So the issue is not that the current trend layer is bad.
+It’s that it stops one layer too early.
+
+Your orbital system changes the requirement
+
+Because you already defined:
+	•	nutrition phase
+	•	orbital phase
+	•	primary/secondary drift logic
+
+the app should not just show trends.
+
+It should ask:
+
+given the last 7–14 days of raw and derived signals,
+which orbital phase is most supported right now?
+
+And then:
+
+does the current nutrition phase still fit that inferred state?
+
+That is the missing bridge.
+
+Best way to think about it
+
+Right now you have:
+	•	selected nutrition phase = what you are running
+	•	translator orbital phase = what that nutrition phase implies
+
+But you also need:
+	•	observed orbital phase likelihood = what your actual data suggests
+
+Then the app can compare:
+
+Example
+	•	selected nutrition phase = carbup
+	•	translated orbital = loading
+	•	observed data suggests = resensitization
+
+That is a mismatch.
+
+And that mismatch should drive:
+	•	meal template review
+	•	nutrition phase change suggestion
+	•	training caution
+
+So yes: manual entries should be trended
+
+Not because more charts are nice, but because they are needed to infer phase.
+
+Especially these:
+
+High-priority raw trends
+
+If I were choosing the most important manual-entry trends to add next:
+
+Qualitative
+	•	sleep quality
+	•	physical energy
+	•	motivation
+	•	mental clarity
+	•	emotional stability
+	•	novelty hunger
+	•	structure hunger
+	•	sensory load baseline
+
+Quantitative
+	•	awake
+	•	rem
+	•	core
+	•	deep
+	•	HRV
+	•	RHR
+	•	fat free mass
+	•	waist
+	•	hormone duration
+	•	hormone quantitative count
+	•	hormone qualitative intensity
+
+These are the ones most likely to help infer:
+	•	stress/disruption
+	•	restoration
+	•	readiness
+	•	nutrient routing
+	•	anabolic tone
+
+Your sleep-stage framework especially matters
+
+Because earlier you mapped:
+	•	Awake → Priming ↔ Saturation
+	•	Core → Loading ↔ Partitioning
+	•	Deep → Accumulation ↔ Resensitization
+	•	REM → Expression ↔ Rebound
+
+That means sleep stages are not just “more metrics.”
+
+They are part of your orbital inference model.
+
+So if the app is not trending Awake / Core / Deep / REM, it is missing a core component of the state machine you designed.
+
+Hormone signal should absolutely be trended
+
+Given how you defined it:
+	•	duration
+	•	quantitative count
+	•	qualitative intensity
+
+this should be part of the long-term model.
+
+Not necessarily a primary decision-maker on day 3, but definitely as a trend surface.
+
+It may help identify:
+	•	recovery suppression
+	•	rebound windows
+	•	underfeeding / overstress signatures
+	•	phase transitions
+
+I would especially trend:
+	•	7-day rolling average
+	•	14-day rolling average
+	•	deviation from 14-day baseline
+
+That will be much more useful than raw day-to-day noise.
+
+What the app should eventually do
+
+The clean sequence is:
+
+A. Trend raw signals
+
+Show them over time.
+
+B. Infer likely orbital pressures
+
+For example:
+	•	stress-disruption pressure
+	•	substrate-loading pressure
+	•	restoration pressure
+	•	adaptation pressure
+
+C. Score orbital phase likelihood
+
+Example:
+	•	Priming likelihood: 0.42
+	•	Loading likelihood: 0.71
+	•	Accumulation likelihood: 0.65
+	•	Resensitization likelihood:

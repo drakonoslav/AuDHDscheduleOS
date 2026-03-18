@@ -16,6 +16,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import {
+  inferOrbitalPhase,
+  ORBITAL_COLORS,
+  ORBITAL_LABELS,
+  ORBITAL_SHORT_DESC,
+} from "@/engine/orbitalInference";
+import type { OrbitalInference } from "@/engine/orbitalInference";
+import {
   buildDailyIndices,
   buildTrendSignals,
   detectInterpretations,
@@ -24,7 +31,7 @@ import type {
   CrossLayerInterpretation,
   TrendSignal,
 } from "@/engine/trendEngine";
-import type { WeeklyRecommendation } from "@/types";
+import type { NutritionPhaseId, WeeklyRecommendation } from "@/types";
 
 // ─── Signal color map ─────────────────────────────────────────────────────────
 const SIGNAL_COLORS: Record<string, string> = {
@@ -225,6 +232,248 @@ const sc = StyleSheet.create({
   pointCount: { fontFamily: "Inter_400Regular", fontSize: 9, color: Colors.light.textMuted, marginTop: 2 },
   emptyWrap: { height: 52, alignItems: "center", justifyContent: "center" },
   emptyText: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textMuted },
+});
+
+// ─── Orbital Pressure Section ─────────────────────────────────────────────────
+const NUTRITION_PHASE_LABELS: Record<NutritionPhaseId, string> = {
+  base:      "Base",
+  carbup:    "Carb-Up",
+  carbcut:   "Carb-Cut",
+  fatcut:    "Fat-Cut",
+  recomp:    "Recomp",
+  deload:    "Deload",
+  dietbreak: "Diet Break",
+  peakbulk:  "Peak Bulk",
+};
+
+function OrbitalPressureSection({ inference }: { inference: OrbitalInference }) {
+  const topScore = inference.topPhase;
+  const conf = inference.confidence;
+
+  const CONF_COLOR: Record<typeof conf, string> = {
+    high:     Colors.light.structuring,
+    moderate: Colors.light.amber,
+    low:      Colors.light.textMuted,
+  };
+
+  return (
+    <View>
+      {/* Section header */}
+      <View style={op.headerRow}>
+        <View>
+          <Text style={styles.sectionTitle}>Orbital Pressure</Text>
+          <Text style={op.subtitle}>Physiological state inferred from {inference.dataPoints}d of data</Text>
+        </View>
+        <View style={[op.confBadge, { backgroundColor: CONF_COLOR[conf] + "22" }]}>
+          <Text style={[op.confText, { color: CONF_COLOR[conf] }]}>
+            {conf.charAt(0).toUpperCase() + conf.slice(1)} conf.
+          </Text>
+        </View>
+      </View>
+
+      {/* Top phase highlight */}
+      <View style={[op.topCard, { borderLeftColor: ORBITAL_COLORS[inference.topPhase] }]}>
+        <View style={op.topCardInner}>
+          <View>
+            <Text style={op.topLabel}>Strongest signal</Text>
+            <Text style={[op.topPhase, { color: ORBITAL_COLORS[inference.topPhase] }]}>
+              {ORBITAL_LABELS[inference.topPhase]}
+            </Text>
+            <Text style={op.topDesc}>{ORBITAL_SHORT_DESC[inference.topPhase]}</Text>
+          </View>
+          <View style={[op.scoreCircle, { borderColor: ORBITAL_COLORS[inference.topPhase] }]}>
+            <Text style={[op.scoreValue, { color: ORBITAL_COLORS[inference.topPhase] }]}>
+              {Math.round(inference.topScore * 100)}
+            </Text>
+            <Text style={op.scorePct}>%</Text>
+          </View>
+        </View>
+
+        {/* Key signals driving the top phase */}
+        {inference.likelihoods[0]!.keySignals.length > 0 && (
+          <View style={op.keySignalList}>
+            {inference.likelihoods[0]!.keySignals.map((s, i) => (
+              <View key={i} style={op.keySignalRow}>
+                <View style={[op.keySignalDot, { backgroundColor: ORBITAL_COLORS[inference.topPhase] }]} />
+                <Text style={op.keySignalText}>{s}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* All-phase likelihood bars */}
+      <View style={op.barsCard}>
+        <Text style={op.barsTitle}>Phase Likelihood Ranking</Text>
+        {inference.likelihoods.map((l) => (
+          <View key={l.orbitalPhaseId} style={op.barRow}>
+            <Text style={[op.barLabel, l.orbitalPhaseId === topScore && { fontFamily: "Inter_600SemiBold" }]}>
+              {l.label}
+            </Text>
+            <View style={op.barTrack}>
+              <View
+                style={[
+                  op.barFill,
+                  {
+                    width: `${Math.round(l.score * 100)}%` as `${number}%`,
+                    backgroundColor: ORBITAL_COLORS[l.orbitalPhaseId],
+                    opacity: l.orbitalPhaseId === topScore ? 1.0 : 0.45,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={[op.barPct, { color: ORBITAL_COLORS[l.orbitalPhaseId] }]}>
+              {Math.round(l.score * 100)}%
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Nutrition mismatch card — only shown when mismatch detected */}
+      {inference.mismatch && inference.selectedNutritionPhaseId && inference.translatedOrbitalPhaseId && (
+        <View style={[
+          op.mismatchCard,
+          { borderLeftColor: inference.mismatchSeverity === "strong" ? Colors.light.rose : Colors.light.amber }
+        ]}>
+          <View style={op.mismatchHeader}>
+            <Feather
+              name={inference.mismatchSeverity === "strong" ? "alert-triangle" : "alert-circle"}
+              size={14}
+              color={inference.mismatchSeverity === "strong" ? Colors.light.rose : Colors.light.amber}
+            />
+            <Text style={[
+              op.mismatchType,
+              { color: inference.mismatchSeverity === "strong" ? Colors.light.rose : Colors.light.amber }
+            ]}>
+              {inference.mismatchSeverity === "strong" ? "Strong" : "Mild"} Phase Mismatch
+            </Text>
+          </View>
+          <Text style={op.mismatchTitle}>{inference.mismatchTitle}</Text>
+          <Text style={op.mismatchDesc}>{inference.mismatchDescription}</Text>
+
+          {/* Comparison: selected → orbital vs observed → suggested */}
+          <View style={op.compareRow}>
+            <View style={op.compareBlock}>
+              <Text style={op.compareLabel}>Selected nutrition</Text>
+              <Text style={op.compareValue}>
+                {NUTRITION_PHASE_LABELS[inference.selectedNutritionPhaseId]}
+              </Text>
+              <Text style={op.compareArrow}>↓ translates to</Text>
+              <View style={[op.compareTag, { backgroundColor: ORBITAL_COLORS[inference.translatedOrbitalPhaseId] + "22" }]}>
+                <Text style={[op.compareTagText, { color: ORBITAL_COLORS[inference.translatedOrbitalPhaseId] }]}>
+                  {ORBITAL_LABELS[inference.translatedOrbitalPhaseId]}
+                </Text>
+              </View>
+            </View>
+            <View style={op.compareDivider} />
+            <View style={op.compareBlock}>
+              <Text style={op.compareLabel}>Data suggests</Text>
+              <Text style={[op.compareValue, { color: ORBITAL_COLORS[inference.topPhase] }]}>
+                {ORBITAL_LABELS[inference.topPhase]}
+              </Text>
+              {inference.suggestedNutritionPhaseId && (
+                <>
+                  <Text style={op.compareArrow}>↓ best matched by</Text>
+                  <View style={[op.compareTag, { backgroundColor: Colors.light.structuring + "22" }]}>
+                    <Text style={[op.compareTagText, { color: Colors.light.structuring }]}>
+                      {NUTRITION_PHASE_LABELS[inference.suggestedNutritionPhaseId]}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+
+          {inference.suggestionRationale && (
+            <Text style={op.rationale}>{inference.suggestionRationale}</Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const op = StyleSheet.create({
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  subtitle: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textMuted, marginTop: 2 },
+  confBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  confText: { fontFamily: "Inter_600SemiBold", fontSize: 10 },
+
+  // Top card
+  topCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderLeftWidth: 3,
+    padding: 14,
+    marginBottom: 10,
+  },
+  topCardInner: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  topLabel: { fontFamily: "Inter_400Regular", fontSize: 10, color: Colors.light.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+  topPhase: { fontFamily: "Inter_700Bold", fontSize: 18, letterSpacing: -0.3, marginBottom: 3 },
+  topDesc: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textSecondary, maxWidth: "75%" as `${number}%`, lineHeight: 17 },
+  scoreCircle: {
+    width: 52, height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    alignSelf: "flex-start",
+  },
+  scoreValue: { fontFamily: "Inter_700Bold", fontSize: 18, letterSpacing: -0.5 },
+  scorePct: { fontFamily: "Inter_400Regular", fontSize: 10, color: Colors.light.textMuted, marginTop: 5 },
+  keySignalList: { marginTop: 10, gap: 5 },
+  keySignalRow: { flexDirection: "row", alignItems: "flex-start", gap: 7 },
+  keySignalDot: { width: 5, height: 5, borderRadius: 3, marginTop: 5, flexShrink: 0 },
+  keySignalText: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textSecondary, flex: 1, lineHeight: 17 },
+
+  // Bars card
+  barsCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 14,
+    marginBottom: 10,
+    gap: 9,
+  },
+  barsTitle: { fontFamily: "Inter_500Medium", fontSize: 11, color: Colors.light.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+  barRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  barLabel: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textSecondary, width: 110 },
+  barTrack: { flex: 1, height: 7, backgroundColor: Colors.light.creamMid, borderRadius: 4, overflow: "hidden" },
+  barFill: { height: "100%" as `${number}%`, borderRadius: 4 },
+  barPct: { fontFamily: "Inter_600SemiBold", fontSize: 10, width: 30, textAlign: "right" },
+
+  // Mismatch card
+  mismatchCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderLeftWidth: 3,
+    padding: 14,
+    marginBottom: 10,
+  },
+  mismatchHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 5 },
+  mismatchType: { fontFamily: "Inter_600SemiBold", fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5 },
+  mismatchTitle: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: Colors.light.text, marginBottom: 7, lineHeight: 18 },
+  mismatchDesc: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textSecondary, lineHeight: 18, marginBottom: 12 },
+  compareRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
+  compareBlock: { flex: 1 },
+  compareDivider: { width: 1, backgroundColor: Colors.light.border, marginVertical: 4 },
+  compareLabel: { fontFamily: "Inter_400Regular", fontSize: 10, color: Colors.light.textMuted, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 },
+  compareValue: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: Colors.light.text, marginBottom: 5 },
+  compareArrow: { fontFamily: "Inter_400Regular", fontSize: 10, color: Colors.light.textMuted, marginBottom: 5 },
+  compareTag: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 4, alignSelf: "flex-start" },
+  compareTagText: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
+  rationale: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textSecondary, lineHeight: 17, borderTopWidth: 1, borderTopColor: Colors.light.border, paddingTop: 10 },
 });
 
 // ─── Interpretation card ──────────────────────────────────────────────────────
@@ -436,10 +685,16 @@ export default function InsightsScreen() {
   const recoveryDays    = recentSnaps.filter((s) => s.recommendedDayMode === "recovery_favoring").length;
   const highOverloadBlocks = recentBlocks.filter((b) => (b.ratings?.overload ?? 0) >= 4);
 
-  // ── Trend layer ────────────────────────────────────────────────────────────
+  // ── Trend + orbital inference layer ────────────────────────────────────────
+  // Always build a 14d index for orbital inference (needs full window regardless of toggle)
+  const dailyIndices14 = useMemo(
+    () => buildDailyIndices(state.snapshots, state.quantitativeLogs ?? [], 14),
+    [state.snapshots, state.quantitativeLogs]
+  );
+
   const dailyIndices = useMemo(
-    () => buildDailyIndices(state.snapshots, state.quantitativeLogs ?? [], windowDays),
-    [state.snapshots, state.quantitativeLogs, windowDays]
+    () => windowDays === 14 ? dailyIndices14 : buildDailyIndices(state.snapshots, state.quantitativeLogs ?? [], windowDays),
+    [state.snapshots, state.quantitativeLogs, windowDays, dailyIndices14]
   );
 
   const trendSignals = useMemo(() => buildTrendSignals(dailyIndices), [dailyIndices]);
@@ -448,6 +703,13 @@ export default function InsightsScreen() {
     () => detectInterpretations(dailyIndices),
     [dailyIndices]
   );
+
+  // Orbital inference always uses 14d window; selected nutrition from most recent snapshot
+  const orbitalInference = useMemo(() => {
+    const latestSnap = [...state.snapshots].sort((a, b) => b.date.localeCompare(a.date))[0];
+    const selectedNutrition = latestSnap?.nutritionPhaseId ?? null;
+    return inferOrbitalPhase(dailyIndices14, selectedNutrition);
+  }, [dailyIndices14, state.snapshots]);
 
   const totalTrendPoints = useMemo(
     () => trendSignals.reduce((sum, s) => sum + s.points.length, 0),
@@ -546,6 +808,13 @@ export default function InsightsScreen() {
                 <Text style={styles.modeLegendText}>Recovery</Text>
               </View>
             </View>
+          </View>
+        )}
+
+        {/* ── Orbital Pressure ──────────────────────────────────────────── */}
+        {orbitalInference.dataPoints > 0 && (
+          <View style={styles.orbitalSection}>
+            <OrbitalPressureSection inference={orbitalInference} />
           </View>
         )}
 
@@ -702,6 +971,9 @@ const styles = StyleSheet.create({
   modeLegendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   modeDot: { width: 8, height: 8, borderRadius: 4 },
   modeLegendText: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textSecondary },
+
+  // Orbital
+  orbitalSection: { marginBottom: 20 },
 
   // Trends
   trendHeader: {

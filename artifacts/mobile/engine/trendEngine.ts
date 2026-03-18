@@ -1,18 +1,54 @@
-import type { DailyStateSnapshot, QuantitativeDailyLog } from "@/types";
+import type { NutritionPhaseId, DailyStateSnapshot, QuantitativeDailyLog } from "@/types";
 
 // ─── DailyIndex ───────────────────────────────────────────────────────────────
 // One record per day — the unified backbone joining qualitative + quantitative.
-// Kept separate; never merged into a single score.
+// Three layers are kept explicitly separate; never merged into a single score.
 export interface DailyIndex {
   date: string;
-  // From qualitative log (derived scores)
-  recoveryNeedScore?: number;  // 1–5
-  adhdPullScore?: number;      // 1–5
-  autismPullScore?: number;    // 1–5
-  // From quantitative log (device data)
-  hrv?: number;                // ms
-  rhr?: number;                // bpm
-  deepSleepMin?: number;       // minutes
+
+  // ── From qualitative log — raw entry fields ───────────────────────────────
+  sleepHours?: number;
+  sleepQuality?: number;          // 1–5
+  physicalEnergy?: number;        // 1–5
+  motivation?: number;            // 1–5
+  mentalFog?: number;             // 1–5 (1=clear, 5=very foggy)
+  emotionalStability?: number;    // 1–5
+  noveltyHunger?: number;         // 1–5
+  structureHunger?: number;       // 1–5
+  pressureSeek?: number;          // 1–5
+  sensoryLoadBaseline?: number;   // 1–5
+  socialLoad?: number;            // 1–5
+  noiseAversion?: number;         // 1–5
+  lightAversion?: number;         // 1–5
+  textureSensitivity?: number;    // 1–5
+  nutritionPhaseId?: NutritionPhaseId;
+
+  // ── From qualitative log — derived composite scores ───────────────────────
+  recoveryNeedScore?: number;     // 1–5
+  adhdPullScore?: number;         // 1–5
+  autismPullScore?: number;       // 1–5
+
+  // ── From quantitative log — sleep stages ──────────────────────────────────
+  awakeMin?: number;
+  remMin?: number;
+  coreMin?: number;
+  deepMin?: number;               // deep sleep minutes
+
+  // ── From quantitative log — vitals ───────────────────────────────────────
+  hrv?: number;                   // ms
+  rhr?: number;                   // bpm
+
+  // ── From quantitative log — body composition ─────────────────────────────
+  weightLbs?: number;
+  bodyFatPct?: number;
+  skeletalMusclePct?: number;
+  fatFreeMassLbs?: number;
+  waistIn?: number;
+
+  // ── From quantitative log — hormone signal ───────────────────────────────
+  hormoneDurationMin?: number;
+  hormoneQuantCount?: number;
+  hormoneQualCount?: number;
 }
 
 // ─── TrendSignal ──────────────────────────────────────────────────────────────
@@ -22,7 +58,25 @@ export type SignalKey =
   | "autismPullScore"
   | "hrv"
   | "rhr"
-  | "deepSleepMin";
+  | "deepMin"
+  | "physicalEnergy"
+  | "motivation"
+  | "mentalFog"
+  | "emotionalStability"
+  | "sleepHours"
+  | "sleepQuality"
+  | "noveltyHunger"
+  | "structureHunger"
+  | "sensoryLoadBaseline"
+  | "remMin"
+  | "coreMin"
+  | "awakeMin"
+  | "weightLbs"
+  | "bodyFatPct"
+  | "fatFreeMassLbs"
+  | "waistIn"
+  | "hormoneDurationMin"
+  | "hormoneQuantCount";
 
 export interface TrendPoint {
   date: string;
@@ -33,12 +87,11 @@ export interface TrendSignal {
   key: SignalKey;
   label: string;
   unit: string;
-  // higher = worse for this signal? used for delta color logic
   higherIsWorse: boolean;
-  points: TrendPoint[];          // sparse — only days where data exists
-  confidence: "high" | "low";   // high = ≥5 points
+  points: TrendPoint[];
+  confidence: "high" | "low";
   latestValue?: number;
-  delta?: number;                // latest − earliest in window (undefined if <2 pts)
+  delta?: number;
 }
 
 // ─── Cross-layer interpretation ───────────────────────────────────────────────
@@ -71,20 +124,53 @@ export function buildDailyIndices(
 
     indices.push({
       date: dateStr,
-      recoveryNeedScore: snap?.recoveryNeedScore,
-      adhdPullScore: snap?.adhdPullScore,
-      autismPullScore: snap?.autismPullScore,
-      hrv: quant?.hrv,
-      rhr: quant?.rhr,
-      deepSleepMin: quant?.deepMin,
+      // ── Qualitative raw fields
+      sleepHours:           snap?.sleepHours,
+      sleepQuality:         snap?.sleepQuality,
+      physicalEnergy:       snap?.physicalEnergy,
+      motivation:           snap?.motivation,
+      mentalFog:            snap?.mentalFog,
+      emotionalStability:   snap?.emotionalStability,
+      noveltyHunger:        snap?.noveltyHunger,
+      structureHunger:      snap?.structureHunger,
+      pressureSeek:         snap?.pressureSeek,
+      sensoryLoadBaseline:  snap?.sensoryLoadBaseline,
+      socialLoad:           snap?.socialLoad,
+      noiseAversion:        snap?.noiseAversion,
+      lightAversion:        snap?.lightAversion,
+      textureSensitivity:   snap?.textureSensitivity,
+      nutritionPhaseId:     snap?.nutritionPhaseId,
+      // ── Qualitative derived
+      recoveryNeedScore:    snap?.recoveryNeedScore,
+      adhdPullScore:        snap?.adhdPullScore,
+      autismPullScore:      snap?.autismPullScore,
+      // ── Quantitative sleep stages
+      awakeMin:             quant?.awakeMin,
+      remMin:               quant?.remMin,
+      coreMin:              quant?.coreMin,
+      deepMin:              quant?.deepMin,
+      // ── Quantitative vitals
+      hrv:                  quant?.hrv,
+      rhr:                  quant?.rhr,
+      // ── Quantitative body composition
+      weightLbs:            quant?.weightLbs,
+      bodyFatPct:           quant?.bodyFatPct,
+      skeletalMusclePct:    quant?.skeletalMusclePct,
+      fatFreeMassLbs:       quant?.fatFreeMassLbs,
+      waistIn:              quant?.waistIn,
+      // ── Quantitative hormone signal
+      hormoneDurationMin:   quant?.hormoneDurationMin,
+      hormoneQuantCount:    quant?.hormoneQuantCount,
+      hormoneQualCount:     quant?.hormoneQualCount,
     });
   }
 
   return indices;
 }
 
-// ─── Build trend signals ──────────────────────────────────────────────────────
-const SIGNAL_DEFS: {
+// ─── Signal definitions ───────────────────────────────────────────────────────
+// Six legacy signals shown in the primary Trends grid (unchanged from v1)
+const PRIMARY_SIGNAL_DEFS: {
   key: SignalKey;
   label: string;
   unit: string;
@@ -95,11 +181,53 @@ const SIGNAL_DEFS: {
   { key: "autismPullScore",   label: "Autism Pull",    unit: "/5",  higherIsWorse: false },
   { key: "hrv",               label: "HRV",            unit: "ms",  higherIsWorse: false },
   { key: "rhr",               label: "Resting HR",     unit: "bpm", higherIsWorse: true  },
-  { key: "deepSleepMin",      label: "Deep Sleep",     unit: "min", higherIsWorse: false },
+  { key: "deepMin",           label: "Deep Sleep",     unit: "min", higherIsWorse: false },
 ];
 
-export function buildTrendSignals(indices: DailyIndex[]): TrendSignal[] {
-  return SIGNAL_DEFS.map(({ key, label, unit, higherIsWorse }) => {
+// Extended raw signals — used by orbital inference and shown in raw signal explorer
+export const ALL_SIGNAL_DEFS: {
+  key: SignalKey;
+  label: string;
+  unit: string;
+  higherIsWorse: boolean;
+  group: "qualitative" | "sleep" | "vitals" | "body" | "hormone";
+}[] = [
+  // Qualitative
+  { key: "physicalEnergy",    label: "Physical Energy",   unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "motivation",        label: "Motivation",        unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "mentalFog",         label: "Mental Fog",        unit: "/5",  higherIsWorse: true,  group: "qualitative" },
+  { key: "emotionalStability",label: "Emotional Stability",unit:"/5", higherIsWorse: false, group: "qualitative" },
+  { key: "sleepHours",        label: "Sleep Duration",    unit: "h",   higherIsWorse: false, group: "qualitative" },
+  { key: "sleepQuality",      label: "Sleep Quality",     unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "noveltyHunger",     label: "Novelty Hunger",    unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "structureHunger",   label: "Structure Hunger",  unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "sensoryLoadBaseline",label:"Sensory Load",      unit: "/5",  higherIsWorse: true,  group: "qualitative" },
+  { key: "recoveryNeedScore", label: "Recovery Need",     unit: "/5",  higherIsWorse: true,  group: "qualitative" },
+  { key: "adhdPullScore",     label: "ADHD Pull",         unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "autismPullScore",   label: "Autism Pull",       unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  // Sleep stages
+  { key: "awakeMin",          label: "Awake",             unit: "min", higherIsWorse: true,  group: "sleep" },
+  { key: "remMin",            label: "REM",               unit: "min", higherIsWorse: false, group: "sleep" },
+  { key: "coreMin",           label: "Core Sleep",        unit: "min", higherIsWorse: false, group: "sleep" },
+  { key: "deepMin",           label: "Deep Sleep",        unit: "min", higherIsWorse: false, group: "sleep" },
+  // Vitals
+  { key: "hrv",               label: "HRV",               unit: "ms",  higherIsWorse: false, group: "vitals" },
+  { key: "rhr",               label: "Resting HR",        unit: "bpm", higherIsWorse: true,  group: "vitals" },
+  // Body composition
+  { key: "weightLbs",         label: "Body Weight",       unit: "lbs", higherIsWorse: false, group: "body" },
+  { key: "bodyFatPct",        label: "Body Fat",          unit: "%",   higherIsWorse: false, group: "body" },
+  { key: "fatFreeMassLbs",    label: "Fat-Free Mass",     unit: "lbs", higherIsWorse: false, group: "body" },
+  { key: "waistIn",           label: "Waist",             unit: "in",  higherIsWorse: false, group: "body" },
+  // Hormone
+  { key: "hormoneDurationMin",label: "Hormone Duration",  unit: "min", higherIsWorse: false, group: "hormone" },
+  { key: "hormoneQuantCount", label: "Hormone Count",     unit: "",    higherIsWorse: false, group: "hormone" },
+];
+
+function buildSignals(
+  defs: { key: SignalKey; label: string; unit: string; higherIsWorse: boolean }[],
+  indices: DailyIndex[]
+): TrendSignal[] {
+  return defs.map(({ key, label, unit, higherIsWorse }) => {
     const points: TrendPoint[] = indices
       .filter((d) => d[key] !== undefined)
       .map((d) => ({ date: d.date, value: d[key] as number }));
@@ -107,7 +235,7 @@ export function buildTrendSignals(indices: DailyIndex[]): TrendSignal[] {
     const latestValue = points.length > 0 ? points[points.length - 1]!.value : undefined;
     const delta =
       points.length >= 2
-        ? (points[points.length - 1]!.value - points[0]!.value)
+        ? points[points.length - 1]!.value - points[0]!.value
         : undefined;
 
     return {
@@ -121,6 +249,16 @@ export function buildTrendSignals(indices: DailyIndex[]): TrendSignal[] {
       delta,
     };
   });
+}
+
+// Primary Trends grid (6 composite + HRV/RHR signals)
+export function buildTrendSignals(indices: DailyIndex[]): TrendSignal[] {
+  return buildSignals(PRIMARY_SIGNAL_DEFS, indices);
+}
+
+// All raw signals for orbital inference + extended explorer
+export function buildAllSignals(indices: DailyIndex[]): TrendSignal[] {
+  return buildSignals(ALL_SIGNAL_DEFS, indices);
 }
 
 // ─── Cross-layer pattern detection ───────────────────────────────────────────
@@ -157,11 +295,7 @@ export function detectInterpretations(
   const hrvDir   = trendDir(hrvPts);
   const rhrDir   = trendDir(rhrPts);
 
-  // ── Alignment: body + self-report agree that strain is accumulating
-  if (
-    recovPts.length >= 3 && hrvPts.length >= 3 &&
-    recovDir === "up" && hrvDir === "down"
-  ) {
+  if (recovPts.length >= 3 && hrvPts.length >= 3 && recovDir === "up" && hrvDir === "down") {
     interps.push({
       type: "alignment",
       title: "Signals agree: strain is accumulating",
@@ -170,11 +304,7 @@ export function detectInterpretations(
     });
   }
 
-  // ── Alignment: recovery demand + RHR both rising
-  if (
-    recovPts.length >= 3 && rhrPts.length >= 3 &&
-    recovDir === "up" && rhrDir === "up"
-  ) {
+  if (recovPts.length >= 3 && rhrPts.length >= 3 && recovDir === "up" && rhrDir === "up") {
     interps.push({
       type: "alignment",
       title: "Signals agree: nervous system under load",
@@ -183,7 +313,6 @@ export function detectInterpretations(
     });
   }
 
-  // ── Mismatch: feel fine but HRV dropping
   if (
     recovPts.length >= 2 && hrvPts.length >= 3 &&
     recovDir !== "up" &&
@@ -198,7 +327,6 @@ export function detectInterpretations(
     });
   }
 
-  // ── Mismatch: high recovery need but HRV stable or rising (stress is psychological, not physiological)
   if (
     recovPts.length >= 2 && hrvPts.length >= 2 &&
     recovDir === "up" &&
@@ -213,7 +341,6 @@ export function detectInterpretations(
     });
   }
 
-  // ── Drift: HRV declining for 3+ consecutive logged days
   if (hrvPts.length >= 4) {
     const run = consecutiveRun(hrvPts, "down");
     if (run >= 3) {
@@ -226,7 +353,6 @@ export function detectInterpretations(
     }
   }
 
-  // ── Drift: recovery need rising 3+ consecutive logged days
   if (recovPts.length >= 4) {
     const run = consecutiveRun(recovPts, "up");
     if (run >= 3) {
