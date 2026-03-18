@@ -50,6 +50,8 @@ interface AppContextType {
   quantitativeLogForDate: (date: string) => QuantitativeDailyLog | undefined;
   // Onboarding
   completeOnboarding: (phaseId: NutritionPhaseId) => void;
+  // Backup / restore — atomically replaces the entire app state
+  importAppState: (newState: AppState) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -318,6 +320,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [updateState]
   );
 
+  // ─── Backup / restore ──────────────────────────────────────────
+  // Atomically replaces the entire app state with an imported backup.
+  // Derived fields (adherenceScore, pullScores, etc.) must already be
+  // recomputed by the caller (recomputeState from backup.ts) before
+  // passing the new state here. Recommendations are rebuilt automatically
+  // from the new state on the next render cycle.
+  const importAppState = useCallback(
+    (newState: AppState) => {
+      updateState(() => newState);
+    },
+    [updateState]
+  );
+
   return (
     <AppContext.Provider
       value={{
@@ -343,6 +358,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         upsertQuantitativeLog,
         quantitativeLogForDate,
         completeOnboarding,
+        importAppState,
       }}
     >
       {children}

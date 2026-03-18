@@ -1,0 +1,118 @@
+This proposal is good. I’d approve it with a few decisions and one adjustment.
+
+The overall structure is right:
+	•	single versioned JSON backup
+	•	raw manual data as source of truth
+	•	recompute derived fields on import
+	•	exclude recommendations
+	•	migration pipeline
+	•	replace/merge options
+	•	no change to current app entry flows
+
+That is the correct preservation architecture.
+
+My decisions:
+
+1. Merge default
+Default to Replace all for restore from backup, but keep Merge as an advanced secondary option.
+
+Reason:
+Your stated fear is disaster recovery after republish/reset. In that situation, the safest mental model is:
+
+“this backup is my truth; restore me exactly.”
+
+Merge is useful, but it is more ambiguous and easier to misunderstand. So:
+	•	primary button: Restore Backup (Replace All)
+	•	secondary button: Merge Backup Into Existing Data
+
+And yes, require the explicit typed confirmation for replace.
+
+2. Entry point
+Do not add a new bottom tab.
+
+Put it in a small Data / Backup screen reachable from a settings-style icon or overflow/menu entry, ideally from an existing place like Log or a lightweight Settings screen.
+
+Reason:
+Backup/restore is critical, but not a daily workflow. A bottom tab would be too prominent.
+
+3. CSV bundle
+Do JSON-only for this build.
+CSV can come later.
+
+Reason:
+JSON is the canonical restore format, and you’re close to publish. CSV is nice for analysis, but it adds extra surface area and complexity. Get the preservation layer correct first.
+
+The one adjustment I want:
+
+Add app build metadata to _meta
+Not just:
+	•	schemaVersion
+
+Also include something like:
+	•	appVersion
+	•	backupFormatVersion if separate from schema
+	•	maybe deviceExportedFrom if easy, but optional
+
+So _meta becomes more like:
+	•	schemaVersion
+	•	appId
+	•	appVersion
+	•	exportedAt
+	•	recordCounts
+
+That will help future debugging.
+
+Two more recommendations I’d give Replit before build:
+
+First, on import preview, also show:
+	•	earliest record date
+	•	latest record date
+
+That will help confirm the backup is the right one.
+
+Second, for emotional safety, add a very clear success message after export:
+	•	file created
+	•	timestamp
+	•	record counts
+	•	whether share/save completed
+
+Send Replit this:
+
+I approve this design with these decisions:
+
+1. Merge default
+Use Replace All as the primary restore path, with Merge as a secondary advanced option.
+My main goal is disaster recovery and exact restoration after a republish/reset scenario.
+So the safest default mental model is: this backup is my truth.
+
+2. Entry point
+Do not add a new bottom tab.
+Put Data / Backup in a settings-style location, reachable from an existing screen via a small icon/menu or lightweight settings screen.
+
+3. CSV bundle
+JSON-only for this build.
+JSON is the canonical restore format.
+CSV can come later as an optional secondary export for analysis, but not now.
+
+One requested adjustment:
+Please add app version metadata into _meta, not just schemaVersion.
+I want _meta to include:
+- schemaVersion
+- appId
+- appVersion
+- exportedAt
+- recordCounts
+
+Two small UX additions:
+- In the import preview, also show earliest and latest record date in the backup
+- After export, show a clear success summary with timestamp and record counts
+
+Please proceed with implementation.
+Afterward, give me:
+1. what files were added/changed
+2. the final backup JSON shape
+3. the exact import flow
+4. the exact export flow
+5. any edge cases or limitations I should know before publishing
+
+This is a strong design and appropriate to ship as your first preservation fail-safe.

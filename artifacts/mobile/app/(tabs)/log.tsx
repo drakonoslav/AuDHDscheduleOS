@@ -170,16 +170,27 @@ export default function LogScreen() {
     <View style={[styles.container, { paddingTop: topInset }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Log</Text>
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push({ pathname: "/training-log", params: { date: selectedDate } });
-          }}
-          style={({ pressed }) => [styles.trainingBtn, pressed && { opacity: 0.7 }]}
-        >
-          <Feather name="zap" size={16} color={Colors.light.textSecondary} />
-          <Text style={styles.trainingBtnText}>Training</Text>
-        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({ pathname: "/training-log", params: { date: selectedDate } });
+            }}
+            style={({ pressed }) => [styles.trainingBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="zap" size={16} color={Colors.light.textSecondary} />
+            <Text style={styles.trainingBtnText}>Training</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/backup");
+            }}
+            style={({ pressed }) => [styles.backupBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="shield" size={16} color={Colors.light.textSecondary} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Date selector */}
@@ -301,6 +312,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   title: { fontFamily: "Inter_700Bold", fontSize: 26, color: Colors.light.text, letterSpacing: -0.5 },
   trainingBtn: {
     flexDirection: "row",
@@ -314,6 +326,16 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   trainingBtnText: { fontFamily: "Inter_500Medium", fontSize: 13, color: Colors.light.textSecondary },
+  backupBtn: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+  },
   dateBar: { flexGrow: 0, marginBottom: 8 },
   dateBarContent: { paddingHorizontal: 16, gap: 6 },
   dateChip: {
