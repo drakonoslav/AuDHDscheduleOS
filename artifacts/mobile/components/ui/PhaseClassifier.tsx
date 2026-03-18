@@ -63,7 +63,7 @@ export function PhaseClassifier({ axes, onChange }: PhaseClassifierProps) {
         onChange={(v) => onChange({ ...axes, structure: v })}
       />
       <RatingSlider
-        label="Recovery demand — how draining vs restorative is this?"
+        label="Recovery support needed — how draining vs restorative is this?"
         sublabel="1 = restorative   ·   5 = highly demanding"
         value={axes.recovery}
         onChange={(v) => onChange({ ...axes, recovery: v })}
