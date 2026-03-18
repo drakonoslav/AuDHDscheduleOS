@@ -17,6 +17,58 @@ import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import type { BlockStatus, ScheduleBlock } from "@/types";
 
+// ─── Training Log Card ────────────────────────────────────────────────────────
+
+function TrainingCard({ date, type }: { date: string; type: "cardio" | "lift" }) {
+  const { trainingForDate } = useApp();
+  const logs = trainingForDate(date).filter((l) => l.type === type);
+  const done = logs.length > 0;
+  const first = logs[0];
+  const label = type === "cardio" ? "Cardio" : "Lift";
+  const icon = type === "cardio" ? "activity" : "zap";
+
+  return (
+    <Pressable
+      onPress={() => {
+        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
+        router.push({ pathname: "/training-log", params: { date, type } });
+      }}
+      style={({ pressed }) => [
+        styles.snapshotCard,
+        pressed && { opacity: 0.85 },
+        done && styles.snapshotCardDone,
+      ]}
+    >
+      <View style={styles.snapshotLeft}>
+        <Feather
+          name={done ? "check-circle" : (icon as any)}
+          size={18}
+          color={done ? Colors.light.structuring : Colors.light.textSecondary}
+        />
+        <View>
+          <Text style={styles.snapshotTitle}>
+            {done ? `${label} Done` : `Log ${label}`}
+          </Text>
+          <Text style={styles.snapshotSub}>
+            {done && first
+              ? [
+                  first.plannedTime,
+                  first.intensity,
+                  first.duration !== undefined ? `${first.duration} min` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : type === "cardio"
+              ? "Time, intensity, meal timing, subjective ratings"
+              : "Time, intensity, meal timing, subjective ratings"}
+          </Text>
+        </View>
+      </View>
+      <Feather name="chevron-right" size={16} color={Colors.light.textMuted} />
+    </Pressable>
+  );
+}
+
 const STATUS_OPTIONS: BlockStatus[] = ["done", "partial", "skipped", "moved"];
 
 const STATUS_COLORS: Record<BlockStatus, string> = {
@@ -254,6 +306,10 @@ export default function LogScreen() {
 
         {/* Quantitative daily log */}
         <QuantLogCard date={selectedDate} />
+
+        {/* Training logs */}
+        <TrainingCard date={selectedDate} type="cardio" />
+        <TrainingCard date={selectedDate} type="lift" />
 
         {/* Stats row */}
         {blocks.length > 0 && (

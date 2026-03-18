@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -33,7 +33,7 @@ function deriveDuration(start: string, end: string): number {
 export default function TrainingLogScreen() {
   const insets = useSafeAreaInsets();
   const { state, today, addTrainingLog, trainingForDate } = useApp();
-  const params = useLocalSearchParams<{ blockId?: string; date?: string }>();
+  const params = useLocalSearchParams<{ blockId?: string; date?: string; type?: string }>();
 
   // ─── Derive pre-fill from block params ───────────────────────────────────────
   const sourceBlock = useMemo(() => {
@@ -62,6 +62,7 @@ export default function TrainingLogScreen() {
   const [type, setType] = useState<TrainingType>(() => {
     if (sourceBlock?.blockType === "cardio") return "cardio";
     if (sourceBlock?.blockType === "lift") return "lift";
+    if (params.type === "cardio") return "cardio";
     return "lift";
   });
   const [plannedTime, setPlannedTime] = useState(
@@ -90,6 +91,17 @@ export default function TrainingLogScreen() {
   const [notes, setNotes] = useState("");
 
   const existing = trainingForDate(targetDate);
+
+  // Auto-derive duration when user enters a valid actual end time
+  useEffect(() => {
+    if (
+      actualTime.match(/^\d{2}:\d{2}$/) &&
+      plannedTime.match(/^\d{2}:\d{2}$/)
+    ) {
+      const d = deriveDuration(plannedTime, actualTime);
+      if (d > 0) setDuration(d.toString());
+    }
+  }, [actualTime, plannedTime]);
 
   const handleSave = () => {
     const log: TrainingLog = {
@@ -199,7 +211,7 @@ export default function TrainingLogScreen() {
             />
           </View>
           <View style={styles.timeField}>
-            <Text style={styles.fieldLabel}>Actual</Text>
+            <Text style={styles.fieldLabel}>Actual End</Text>
             <TextInput
               style={styles.textInput}
               value={actualTime}
@@ -210,11 +222,9 @@ export default function TrainingLogScreen() {
             />
           </View>
           <View style={styles.timeField}>
-            <Text style={styles.fieldLabel}>
-              Duration{preFilled ? " (from block)" : " (min)"}
-            </Text>
+            <Text style={styles.fieldLabel}>Duration (min)</Text>
             <TextInput
-              style={[styles.textInput, preFilled && styles.textInputPrefilled]}
+              style={styles.textInput}
               value={duration}
               onChangeText={setDuration}
               keyboardType="number-pad"
