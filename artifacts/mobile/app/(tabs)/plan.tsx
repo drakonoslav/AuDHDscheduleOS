@@ -47,6 +47,19 @@ function blocksOverlap(
     timeToMins(b.plannedStart) < timeToMins(a.plannedEnd);
 }
 
+function overlapKind(
+  a: { plannedStart: string; plannedEnd: string },
+  b: { plannedStart: string; plannedEnd: string }
+): "soft" | "hard" | "none" {
+  if (!blocksOverlap(a, b)) return "none";
+  const aS = timeToMins(a.plannedStart), aE = timeToMins(a.plannedEnd);
+  const bS = timeToMins(b.plannedStart), bE = timeToMins(b.plannedEnd);
+  // Soft = one fully contains the other (nested / embedded — expected)
+  if ((aS <= bS && aE >= bE) || (bS <= aS && bE >= aE)) return "soft";
+  // Hard = partial collision — neither contains the other
+  return "hard";
+}
+
 // ─── Add Block Modal ──────────────────────────────────────────────────────────
 
 interface BlockFormData {
@@ -79,8 +92,13 @@ function AddBlockModal({ visible, onClose, onAdd, date, existingBlocks }: {
 
   const overlapWarnings = useMemo(() => {
     if (!form.plannedStart.match(/^\d{2}:\d{2}$/) || !form.plannedEnd.match(/^\d{2}:\d{2}$/)) return [];
-    return existingBlocks.filter((b) => blocksOverlap(form, b)).map((b) => b.label);
+    return existingBlocks
+      .map((b) => ({ label: b.label, kind: overlapKind(form, b) }))
+      .filter((x) => x.kind !== "none");
   }, [form.plannedStart, form.plannedEnd, existingBlocks]);
+
+  const hasHardOverlap = overlapWarnings.some((w) => w.kind === "hard");
+  const hasSoftOverlap = overlapWarnings.some((w) => w.kind === "soft");
 
   const handleAdd = () => {
     if (!form.label.trim()) {
@@ -174,15 +192,33 @@ function AddBlockModal({ visible, onClose, onAdd, date, existingBlocks }: {
           </View>
 
           {overlapWarnings.length > 0 && (
-            <View style={styles.overlapInlineWarn}>
-              <Feather name="alert-triangle" size={13} color={Colors.light.amber} />
+            <View style={[styles.overlapInlineWarn, hasHardOverlap && styles.overlapInlineWarnHard]}>
+              <Feather
+                name="alert-triangle"
+                size={13}
+                color={hasHardOverlap ? Colors.light.rose : Colors.light.amber}
+              />
               <View style={{ flex: 1 }}>
-                <Text style={styles.overlapInlineTitle}>
-                  Overlaps with: {overlapWarnings.join(", ")}
-                </Text>
-                <Text style={styles.overlapInlineBody}>
-                  Ratings on overlapping blocks may reflect mixed demands. Note this when reviewing scores later.
-                </Text>
+                {hasSoftOverlap && (
+                  <>
+                    <Text style={styles.overlapInlineTitle}>
+                      Nested: {overlapWarnings.filter((w) => w.kind === "soft").map((w) => w.label).join(", ")}
+                    </Text>
+                    <Text style={styles.overlapInlineBody}>
+                      This block sits inside a larger one. Ratings may reflect mixed demands — note when interpreting scores.
+                    </Text>
+                  </>
+                )}
+                {hasHardOverlap && (
+                  <>
+                    <Text style={[styles.overlapInlineTitle, { color: Colors.light.rose }]}>
+                      Conflict: {overlapWarnings.filter((w) => w.kind === "hard").map((w) => w.label).join(", ")}
+                    </Text>
+                    <Text style={styles.overlapInlineBody}>
+                      These blocks run simultaneously without either containing the other. Scores on both will be unreliable.
+                    </Text>
+                  </>
+                )}
               </View>
             </View>
           )}
@@ -567,17 +603,21 @@ export default function PlanScreen() {
     return [...raw].sort((a, b) => a.plannedStart.localeCompare(b.plannedStart));
   }, [blocksForDate, selectedDate]);
 
-  const overlappingIds = useMemo(() => {
-    const ids = new Set<string>();
+  // Map<blockId, "soft" | "hard"> — hard wins if a block appears in multiple pairs
+  const overlapKinds = useMemo(() => {
+    const kinds = new Map<string, "soft" | "hard">();
     for (let i = 0; i < blocks.length; i++) {
       for (let j = i + 1; j < blocks.length; j++) {
-        if (blocksOverlap(blocks[i]!, blocks[j]!)) {
-          ids.add(blocks[i]!.id);
-          ids.add(blocks[j]!.id);
-        }
+        const kind = overlapKind(blocks[i]!, blocks[j]!);
+        if (kind === "none") continue;
+        const upgrade = (id: string) => {
+          if (kinds.get(id) !== "hard") kinds.set(id, kind);
+        };
+        upgrade(blocks[i]!.id);
+        upgrade(blocks[j]!.id);
       }
     }
-    return ids;
+    return kinds;
   }, [blocks]);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
@@ -700,11 +740,13 @@ export default function PlanScreen() {
                 onPress={() => router.push({ pathname: "/block-detail", params: { id: block.id } })}
                 style={({ pressed }) => [
                   styles.planCard,
-                  overlappingIds.has(block.id) && styles.planCardOverlap,
+                  overlapKinds.has(block.id) && styles.planCardOverlap,
+                  overlapKinds.get(block.id) === "hard" && styles.planCardHardOverlap,
                   pressed && { opacity: 0.85 },
                 ]}
               >
-                {overlappingIds.has(block.id) && <View style={styles.overlapAccent} />}
+                {overlapKinds.get(block.id) === "hard" && <View style={[styles.overlapAccent, styles.overlapAccentHard]} />}
+                {overlapKinds.get(block.id) === "soft" && <View style={styles.overlapAccent} />}
                 <View style={styles.planCardLeft}>
                   <Text style={styles.planTime}>{block.plannedStart} – {block.plannedEnd}</Text>
                   <Text style={styles.planLabel}>{block.label}</Text>
@@ -712,9 +754,14 @@ export default function PlanScreen() {
                     <PhaseTag phase={block.phaseTag} small />
                     <Text style={styles.planType}>{block.blockType}</Text>
                   </View>
-                  {overlappingIds.has(block.id) && (
+                  {overlapKinds.get(block.id) === "soft" && (
                     <Text style={styles.overlapCardNote}>
-                      Time overlap — ratings may reflect mixed demands
+                      Nested overlap — ratings may reflect mixed demands
+                    </Text>
+                  )}
+                  {overlapKinds.get(block.id) === "hard" && (
+                    <Text style={[styles.overlapCardNote, styles.overlapCardNoteHard]}>
+                      Conflicting overlap — blocks run simultaneously
                     </Text>
                   )}
                 </View>
@@ -869,6 +916,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.light.amber,
     marginTop: 4,
+  },
+  overlapCardNoteHard: {
+    color: Colors.light.rose,
+  },
+  planCardHardOverlap: {
+    borderColor: Colors.light.rose + "66",
+  },
+  overlapAccentHard: {
+    backgroundColor: Colors.light.rose,
   },
   planCardLeft: { flex: 1 },
   planTime: {
@@ -1104,5 +1160,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.light.textSecondary,
     lineHeight: 16,
+  },
+  overlapInlineWarnHard: {
+    backgroundColor: Colors.light.rose + "18",
+    borderColor: Colors.light.rose + "44",
   },
 });
