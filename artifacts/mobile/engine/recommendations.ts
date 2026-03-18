@@ -119,7 +119,7 @@ export function generateRecommendations(state: AppState): WeeklyRecommendation[]
     recs.push(
       makeRec({
         type: "timing_shift",
-        confidence: "pattern_backed",
+        confidence: "emerging",
         title: "Expansion blocks on recovery days cause overload",
         body: `Expansion-tagged blocks on recovery-favoring days led to overload ${mismatchedDays.length} times recently. This is a state-schedule mismatch, not a motivation issue.`,
         actionable: "On recovery days, replace expansion blocks with structuring or rest blocks. Reserve novelty for higher-state days.",
@@ -138,7 +138,7 @@ export function generateRecommendations(state: AppState): WeeklyRecommendation[]
     recs.push(
       makeRec({
         type: "training_placement",
-        confidence: "pattern_backed",
+        confidence: "emerging",
         title: "Late lifting disrupts bedtime",
         body: `Lifting after 7pm has correlated with high bedtime impact ${lateLiftDays.length} times. Late CNS stimulation may be pushing your sleep window.`,
         actionable: "Try moving lift sessions to before 6pm. If evening is the only option, reduce intensity on those days.",
@@ -162,19 +162,6 @@ export function generateRecommendations(state: AppState): WeeklyRecommendation[]
         title: "Pre-lift meal timing may be off",
         body: `Your pre-lift meals have fallen outside the 30–90 min window on ${poorPreLiftTiming.length} occasions alongside low motivation before lifting.`,
         actionable: "Aim for pre-lift carbs 45–60 min before your session. Dextrin + Whey 45 min prior is your current template.",
-      })
-    );
-  }
-
-  // ─── If no data yet, return a welcoming non-prescriptive note ───────────────
-  if (recs.length === 0 && recentBlocks.length < 3) {
-    recs.push(
-      makeRec({
-        type: "timing_shift",
-        confidence: "speculative",
-        title: "Keep logging to unlock insights",
-        body: "Recommendations appear once there are enough logged days to identify real patterns. Aim for 3+ days of block logging.",
-        actionable: "Log today's blocks and rate at least a few of them to get started.",
       })
     );
   }

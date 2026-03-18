@@ -1,0 +1,188 @@
+What looks especially good
+
+1. The 2×2 stat grid is the right kind of summary
+
+These are compact, interpretable, and cover different dimensions:
+	•	adherence
+	•	friction
+	•	recovery
+	•	overload
+
+That is much better than four productivity stats that all say the same thing.
+
+The best card in that set is probably Avg resistance, because it captures something most apps miss:
+
+not just whether you did blocks, but how hard they felt.
+
+That is high-value.
+
+2. Day Mode Distribution is unusually smart
+
+This is one of the more novel parts of your system.
+
+Most apps would only show:
+	•	tasks done
+	•	streaks
+	•	sleep average
+
+But you show:
+
+what kind of week your nervous system was actually having
+
+That is very aligned with the whole purpose of the app.
+
+3. Recommendations are narrow and rule-based
+
+This is correct for v1.
+
+You are not pretending to have magical AI insight.
+You are saying:
+	•	here are the rules,
+	•	here is the threshold,
+	•	here is the suggested adjustment.
+
+That builds trust.
+
+4. Dismissible cards are a good call
+
+This keeps the tab from becoming naggy.
+And “stay dismissed until the week rolls over” is a smart restraint.
+
+⸻
+
+What is strongest conceptually
+
+The tab is not trying to do too much.
+
+It is summary → interpretation → suggestion
+
+That is exactly what Insights should be.
+It should not be a giant dashboard graveyard.
+
+⸻
+
+The main thing I would refine
+
+The weakest part is not the structure — it is the threshold logic consistency.
+
+You call some rules “Pattern-backed” at:
+	•	3+ entries
+	•	but others at 2+ entries
+
+That may be totally reasonable in context, but from a user-trust standpoint it risks feeling slightly uneven.
+
+For example:
+	•	high-resistance block type = 3+
+	•	low sleep days = 3+
+	•	high sensory load = 3+
+	•	but expansion on recovery days = 2+
+	•	late lifting bedtime impact = 2+
+	•	pre-lift meal timing = 2+
+
+That is not wrong, but I would make the confidence language very explicit.
+
+Something like:
+	•	Pattern-backed = repeated enough and specific enough
+	•	Emerging = early signal, watch it
+	•	Speculative = not yet used, or don’t show at all
+
+Right now, I would probably label those 2-hit rules as Emerging unless the pattern is extremely high-specificity.
+
+My cleaner confidence rule
+	•	Pattern-backed = 3+ repetitions
+	•	Emerging = 2 repetitions
+	•	Speculative = hidden for now
+
+That would make the engine feel more coherent.
+
+⸻
+
+One subtle concern
+
+Your first section mixes:
+	•	percentages
+	•	averages
+	•	counts
+
+That is fine, but the cards should feel equally interpretable at a glance.
+
+The one that may be slightly weakest is Avg sleep, because “6 days logged” is useful, but it may also need a clearer quality cue if missingness is common.
+
+For example, if only 2 days are logged, an average sleep value is much less trustworthy than if 6–7 days are logged.
+
+So eventually, not urgently, it would help to visually de-emphasize weak-sample summaries.
+
+⸻
+
+What feels especially wise and unusual
+
+These two things:
+
+1. Resistance instead of just adherence
+
+That is one of the smartest parts of the whole app.
+
+2. Expansion blocks on recovery days
+
+That rule is very “you,” and it is actually strong.
+It reflects the architecture of the system rather than generic wellness advice.
+
+That means the app is not just tracking behavior. It is checking fit between state and demand.
+
+That is the real differentiator.
+
+⸻
+
+What it does not need yet
+
+I agree with the current omissions.
+
+It does not need yet:
+	•	trend lines everywhere
+	•	week-over-week comparisons
+	•	heavy drill-down
+	•	giant analytic complexity
+
+Those would make it look more advanced, but not necessarily make it more useful yet.
+
+For v1, your current coverage is enough.
+
+⸻
+
+What I would add next, if choosing only one thing
+
+Not charts.
+
+I would add:
+
+tap-through from recommendation card to supporting examples
+
+For example, if it says:
+	•	“High resistance on work blocks”
+
+then tapping it could show:
+	•	the 3 or 4 specific work blocks
+	•	dates
+	•	resistance ratings
+	•	maybe day mode
+
+That would massively increase trust without adding much conceptual complexity.
+
+It would make the engine feel evidentiary, not preachy.
+
+⸻
+
+Bottom line
+
+Yes — the Insights tab is structured to function, and it is structured well for this stage.
+
+Its strengths are:
+	•	good section order
+	•	right level of summary
+	•	meaningful metrics
+	•	conservative rule-based recommendations
+
+Its main refinement area is:
+	•	making confidence thresholds feel more consistent and legible
+
+If I had to grade it as a v1 Insights design, I’d call it strong and credible.
