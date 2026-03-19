@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Colors } from "@/constants/colors";
 
@@ -27,36 +27,62 @@ export function DialPicker({ min, max, value, onChange, label, padded = true }: 
     [min, max]
   );
 
-  const scrollToValue = useCallback((v: number, animated = false) => {
-    const idx = v - min;
-    scrollRef.current?.scrollTo({ y: idx * ITEM_H, animated });
-  }, [min]);
-
-  // Scroll to initial value after layout
   const didMount = useRef(false);
+  // Track last committed value to avoid duplicate onChange calls and
+  // to skip external sync scrolls that we ourselves triggered.
+  const committedValue = useRef(value);
+
+  const scrollToIdx = useCallback((idx: number, animated = false) => {
+    scrollRef.current?.scrollTo({ y: idx * ITEM_H, animated });
+  }, []);
+
+  // Scroll to initial position after layout is ready.
   const handleLayout = useCallback(() => {
     if (didMount.current) return;
     didMount.current = true;
-    // Short delay so layout is fully computed before scrollTo
-    setTimeout(() => scrollToValue(value, false), 80);
-  }, [value, scrollToValue]);
+    setTimeout(() => scrollToIdx(value - min, false), 80);
+  }, [value, min, scrollToIdx]);
 
-  // Sync when value changes externally (e.g. form reset)
-  const prevValue = useRef(value);
+  // If the parent changes value externally (form reset, etc.), sync the scroll.
   useEffect(() => {
-    if (prevValue.current !== value && didMount.current) {
-      scrollToValue(value, true);
-    }
-    prevValue.current = value;
-  }, [value, scrollToValue]);
+    if (!didMount.current) return;
+    if (committedValue.current === value) return; // we caused this — skip
+    committedValue.current = value;
+    scrollToIdx(value - min, true);
+  }, [value, min, scrollToIdx]);
 
-  const handleScrollEnd = useCallback((e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
+  // Core commit: round scroll offset → nearest item → snap + call onChange.
+  // The scrollTo(animated:true) call also overrides any in-flight CSS momentum
+  // on web, so the drum visually lands on the committed value.
+  const commitFromY = useCallback((y: number) => {
     const idx = Math.max(0, Math.min(range - 1, Math.round(y / ITEM_H)));
     const newVal = min + idx;
-    try { Haptics.selectionAsync(); } catch (_) {}
-    onChange(newVal);
-  }, [min, range, onChange]);
+    // Always snap visually to the grid position (important on web where CSS
+    // snap may still be animating when this fires).
+    scrollToIdx(idx, true);
+    if (newVal !== committedValue.current) {
+      committedValue.current = newVal;
+      try { Haptics.selectionAsync(); } catch (_) {}
+      onChange(newVal);
+    }
+  }, [min, range, onChange, scrollToIdx]);
+
+  // ── Web: commit on finger lift ──────────────────────────────────────────────
+  // onMomentumScrollEnd does NOT fire reliably in iOS Safari (web).
+  // onScrollEndDrag fires on touchend — we commit there and immediately
+  // programmatically snap the drum, overriding any remaining CSS momentum.
+  const handleScrollEndDrag = useCallback((e: any) => {
+    if (Platform.OS === "web") {
+      commitFromY(e.nativeEvent.contentOffset.y);
+    }
+  }, [commitFromY]);
+
+  // ── Native: commit after snap settles ───────────────────────────────────────
+  // On iOS/Android, snapToInterval guarantees the list lands on an exact
+  // ITEM_H multiple; onMomentumScrollEnd fires when the animation finishes.
+  const handleMomentumScrollEnd = useCallback((e: any) => {
+    commitFromY(e.nativeEvent.contentOffset.y);
+  }, [commitFromY]);
 
   return (
     <View style={dialStyles.dial}>
@@ -70,8 +96,8 @@ export function DialPicker({ min, max, value, onChange, label, padded = true }: 
           decelerationRate="fast"
           scrollEventThrottle={16}
           contentContainerStyle={{ paddingVertical: ITEM_H * PAD }}
-          onMomentumScrollEnd={handleScrollEnd}
-          onScrollEndDrag={handleScrollEnd}
+          onScrollEndDrag={handleScrollEndDrag}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
         >
           {items.map((v) => (
             <View key={v} style={dialStyles.item}>
@@ -87,7 +113,7 @@ export function DialPicker({ min, max, value, onChange, label, padded = true }: 
             </View>
           ))}
         </ScrollView>
-        {/* Selection highlight overlay — pointer-events none so scroll works */}
+        {/* Highlight overlay — sits on top of scroll content, passes touches through */}
         <View style={[dialStyles.highlight, { pointerEvents: "none" }]} />
       </View>
     </View>
@@ -143,7 +169,6 @@ export function TimeDials({ startTime, endTime, onStartChange, onEndChange }: Ti
           </View>
         </View>
 
-        {/* ── Arrow ── */}
         <Text style={dialStyles.arrow}>→</Text>
 
         {/* ── End ── */}
@@ -184,16 +209,13 @@ export function TimeDials({ startTime, endTime, onStartChange, onEndChange }: Ti
 
 const dialStyles = StyleSheet.create({
   container: { marginTop: 4 },
-
   groupRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
   },
-
   group: { alignItems: "center" },
-
   groupLabel: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 10,
@@ -202,13 +224,7 @@ const dialStyles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 4,
   },
-
-  dialRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-  },
-
+  dialRow: { flexDirection: "row", alignItems: "center", gap: 2 },
   colon: {
     fontFamily: "Inter_700Bold",
     fontSize: 22,
@@ -216,7 +232,6 @@ const dialStyles = StyleSheet.create({
     marginBottom: 4,
     paddingHorizontal: 2,
   },
-
   arrow: {
     fontFamily: "Inter_400Regular",
     fontSize: 20,
@@ -224,10 +239,7 @@ const dialStyles = StyleSheet.create({
     marginTop: 22,
     paddingHorizontal: 6,
   },
-
-  // ── DialPicker ──
   dial: { alignItems: "center", width: 64 },
-
   dialLabel: {
     fontFamily: "Inter_500Medium",
     fontSize: 9,
@@ -236,7 +248,6 @@ const dialStyles = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: 4,
   },
-
   drum: {
     height: ITEM_H * VISIBLE,
     width: 64,
@@ -246,32 +257,22 @@ const dialStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
-
-  item: {
-    height: ITEM_H,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
+  item: { height: ITEM_H, alignItems: "center", justifyContent: "center" },
   itemText: {
     fontFamily: "Inter_400Regular",
     fontSize: 18,
     color: Colors.light.textMuted,
   },
-
   itemTextNear: {
     fontFamily: "Inter_500Medium",
     fontSize: 19,
     color: Colors.light.textSecondary,
   },
-
   itemTextSelected: {
     fontFamily: "Inter_700Bold",
     fontSize: 22,
     color: Colors.light.text,
   },
-
-  // Overlay that highlights the center row
   highlight: {
     position: "absolute",
     left: 0,
@@ -283,8 +284,6 @@ const dialStyles = StyleSheet.create({
     borderBottomWidth: 1.5,
     borderColor: Colors.light.tint + "55",
   },
-
-  // ── Summary ──
   summary: {
     flexDirection: "row",
     alignItems: "center",
@@ -292,18 +291,12 @@ const dialStyles = StyleSheet.create({
     gap: 8,
     marginTop: 10,
   },
-
   summaryTime: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
     color: Colors.light.text,
   },
-
-  summaryArrow: {
-    color: Colors.light.textMuted,
-    fontFamily: "Inter_400Regular",
-  },
-
+  summaryArrow: { color: Colors.light.textMuted, fontFamily: "Inter_400Regular" },
   durationPill: {
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -312,7 +305,6 @@ const dialStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.borderLight,
   },
-
   durationText: {
     fontFamily: "Inter_500Medium",
     fontSize: 12,

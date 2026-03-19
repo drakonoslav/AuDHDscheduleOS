@@ -151,6 +151,7 @@ function WaistPicker({ value, onChange }: { value: number; onChange: (v: number)
     () => Math.round((value - WAIST_MIN) / WAIST_STEP),
     [value]
   );
+  const committedValue = useRef(value);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -159,12 +160,29 @@ function WaistPicker({ value, onChange }: { value: number; onChange: (v: number)
     return () => clearTimeout(t);
   }, []);
 
-  const onScrollEnd = useCallback((e: { nativeEvent: { contentOffset: { y: number } } }) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
-    const clamped = Math.max(0, Math.min(idx, WAIST_VALUES.length - 1));
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onChange(WAIST_VALUES[clamped]!);
+  const commitFromY = useCallback((y: number) => {
+    const idx = Math.max(0, Math.min(WAIST_VALUES.length - 1, Math.round(y / ITEM_H)));
+    // Snap to grid position — overrides CSS momentum on web
+    listRef.current?.scrollToOffset({ offset: idx * ITEM_H, animated: true });
+    const newVal = WAIST_VALUES[idx]!;
+    if (newVal !== committedValue.current) {
+      committedValue.current = newVal;
+      try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
+      onChange(newVal);
+    }
   }, [onChange]);
+
+  // Web: onScrollEndDrag fires on finger lift (onMomentumScrollEnd is unreliable in Safari)
+  const handleScrollEndDrag = useCallback((e: any) => {
+    if (Platform.OS === "web") {
+      commitFromY(e.nativeEvent.contentOffset.y);
+    }
+  }, [commitFromY]);
+
+  // Native: fires after snap animation completes — exact position guaranteed
+  const handleMomentumScrollEnd = useCallback((e: any) => {
+    commitFromY(e.nativeEvent.contentOffset.y);
+  }, [commitFromY]);
 
   return (
     <View style={wp.container}>
@@ -178,7 +196,8 @@ function WaistPicker({ value, onChange }: { value: number; onChange: (v: number)
         decelerationRate="fast"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingVertical: ITEM_H * Math.floor(VISIBLE / 2) }}
-        onMomentumScrollEnd={onScrollEnd}
+        onScrollEndDrag={handleScrollEndDrag}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
         renderItem={({ item, index }) => {
           const isSel = index === selectedIndex;
           return (
