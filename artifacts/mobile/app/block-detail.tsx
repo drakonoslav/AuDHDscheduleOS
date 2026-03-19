@@ -30,6 +30,121 @@ const STATUS_OPTIONS: { value: BlockStatus; label: string; color: string }[] = [
 
 type TabId = "actuals" | "ratings" | "sensory";
 
+// ─── Time helpers ─────────────────────────────────────────────────────────────
+
+function toMins(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
+function fromMins(total: number): string {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, total));
+  const h = Math.floor(clamped / 60);
+  const m = clamped % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+}
+
+// ─── TimeAdjuster ─────────────────────────────────────────────────────────────
+
+function TimeAdjuster({
+  label,
+  value,
+  plannedValue,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  plannedValue: string;
+  onChange: (v: string) => void;
+}) {
+  const isChanged = value !== plannedValue;
+
+  const adjust = (delta: number) => {
+    onChange(fromMins(toMins(value) + delta));
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
+  };
+
+  const reset = () => {
+    onChange(plannedValue);
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
+  };
+
+  return (
+    <View style={adj.wrap}>
+      <View style={adj.labelRow}>
+        <Text style={adj.label}>{label}</Text>
+        {isChanged && (
+          <Pressable onPress={reset} style={adj.resetBtn}>
+            <Text style={adj.resetText}>reset</Text>
+          </Pressable>
+        )}
+      </View>
+
+      <View style={adj.row}>
+        {/* −5 */}
+        <Pressable style={adj.btnLarge} onPress={() => adjust(-5)}>
+          <Text style={adj.btnLargeText}>−5</Text>
+        </Pressable>
+        {/* −1 */}
+        <Pressable style={adj.btnSmall} onPress={() => adjust(-1)}>
+          <Text style={adj.btnSmallText}>−1</Text>
+        </Pressable>
+
+        {/* Time display */}
+        <View style={[adj.timeBox, isChanged && adj.timeBoxChanged]}>
+          <Text style={[adj.timeText, isChanged && adj.timeTextChanged]}>{value}</Text>
+          {isChanged && (
+            <Text style={adj.plannedHint}>was {plannedValue}</Text>
+          )}
+        </View>
+
+        {/* +1 */}
+        <Pressable style={adj.btnSmall} onPress={() => adjust(1)}>
+          <Text style={adj.btnSmallText}>+1</Text>
+        </Pressable>
+        {/* +5 */}
+        <Pressable style={adj.btnLarge} onPress={() => adjust(5)}>
+          <Text style={adj.btnLargeText}>+5</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const adj = StyleSheet.create({
+  wrap: { marginBottom: 16 },
+  labelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  label: {
+    fontFamily: "Inter_500Medium", fontSize: 12, color: Colors.light.textTertiary,
+    textTransform: "uppercase", letterSpacing: 0.5,
+  },
+  resetBtn: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: Colors.light.creamMid },
+  resetText: { fontFamily: "Inter_500Medium", fontSize: 11, color: Colors.light.textMuted },
+  row: { flexDirection: "row", alignItems: "center", gap: 6 },
+  btnLarge: {
+    width: 48, height: 48, borderRadius: 10,
+    backgroundColor: Colors.light.surface, borderWidth: 1, borderColor: Colors.light.border,
+    alignItems: "center", justifyContent: "center",
+  },
+  btnLargeText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: Colors.light.text },
+  btnSmall: {
+    width: 36, height: 48, borderRadius: 8,
+    backgroundColor: Colors.light.creamMid, borderWidth: 1, borderColor: Colors.light.borderLight,
+    alignItems: "center", justifyContent: "center",
+  },
+  btnSmallText: { fontFamily: "Inter_500Medium", fontSize: 12, color: Colors.light.textSecondary },
+  timeBox: {
+    flex: 1, height: 48, borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border,
+    backgroundColor: Colors.light.surface, alignItems: "center", justifyContent: "center",
+  },
+  timeBoxChanged: { borderColor: Colors.light.tint + "88", backgroundColor: Colors.light.tint + "0A" },
+  timeText: { fontFamily: "Inter_700Bold", fontSize: 20, color: Colors.light.text, letterSpacing: -0.5 },
+  timeTextChanged: { color: Colors.light.tint },
+  plannedHint: { fontFamily: "Inter_400Regular", fontSize: 10, color: Colors.light.textMuted, marginTop: 1 },
+});
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
 export default function BlockDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -39,8 +154,13 @@ export default function BlockDetailScreen() {
 
   const [tab, setTab] = useState<TabId>("actuals");
   const [status, setStatus] = useState<BlockStatus>(block?.status ?? "planned");
-  const [actualStart, setActualStart] = useState(block?.actualStart ?? "");
-  const [actualEnd, setActualEnd] = useState(block?.actualEnd ?? "");
+  // Auto-populate from planned times when no actual has been saved yet.
+  const [actualStart, setActualStart] = useState(
+    block?.actualStart ?? block?.plannedStart ?? ""
+  );
+  const [actualEnd, setActualEnd] = useState(
+    block?.actualEnd ?? block?.plannedEnd ?? ""
+  );
   const [ratings, setRatings] = useState<Partial<BlockRatings>>(block?.ratings ?? {});
   const [sensory, setSensory] = useState<Partial<SensoryNotes>>(block?.sensoryNotes ?? {});
   const [notes, setNotes] = useState(block?.notes ?? "");
@@ -66,7 +186,7 @@ export default function BlockDetailScreen() {
       notes: notes.trim() || undefined,
     };
     updateBlock(block.id, updates);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
     router.back();
   };
 
@@ -92,8 +212,44 @@ export default function BlockDetailScreen() {
     setSensory((s) => ({ ...s, [key]: !s[key] }));
   };
 
+  // Live deviation preview (computed from current local state, not saved block).
+  const liveStartDevMin = useMemo(() => {
+    if (!actualStart || !block.plannedStart) return undefined;
+    return toMins(actualStart) - toMins(block.plannedStart);
+  }, [actualStart, block.plannedStart]);
+
+  const liveEndDevMin = useMemo(() => {
+    if (!actualEnd || !block.plannedEnd) return undefined;
+    return toMins(actualEnd) - toMins(block.plannedEnd);
+  }, [actualEnd, block.plannedEnd]);
+
+  const liveDurationActual = useMemo(() => {
+    if (!actualStart || !actualEnd) return undefined;
+    return toMins(actualEnd) - toMins(actualStart);
+  }, [actualStart, actualEnd]);
+
+  const liveDurationPlanned = useMemo(() => {
+    if (!block.plannedStart || !block.plannedEnd) return undefined;
+    return toMins(block.plannedEnd) - toMins(block.plannedStart);
+  }, [block.plannedStart, block.plannedEnd]);
+
+  const liveDurationDev = liveDurationActual !== undefined && liveDurationPlanned !== undefined
+    ? liveDurationActual - liveDurationPlanned
+    : undefined;
+
+  const liveAdherence = useMemo(() => {
+    if (liveStartDevMin === undefined || liveDurationDev === undefined) return undefined;
+    const startPenalty = Math.min(100, Math.abs(liveStartDevMin) * 5);
+    const durPenalty = Math.min(100, Math.abs(liveDurationDev) * 2);
+    return Math.max(0, 100 - startPenalty - durPenalty);
+  }, [liveStartDevMin, liveDurationDev]);
+
+  const fmtDev = (v: number) =>
+    v === 0 ? "on time" : v > 0 ? `+${v}m late` : `${Math.abs(v)}m early`;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.closeBtn}>
           <Feather name="x" size={22} color={Colors.light.textSecondary} />
@@ -104,6 +260,7 @@ export default function BlockDetailScreen() {
         </Pressable>
       </View>
 
+      {/* Block meta */}
       <View style={styles.blockMeta}>
         <Text style={styles.metaTime}>{block.plannedStart} – {block.plannedEnd}</Text>
         <PhaseTag phase={block.phaseTag} small />
@@ -111,7 +268,7 @@ export default function BlockDetailScreen() {
         {(block.blockType === "cardio" || block.blockType === "lift") && (
           <Pressable
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
               router.push({ pathname: "/training-log", params: { blockId: block.id, date: block.date } });
             }}
             style={({ pressed }) => [styles.trainingShortcut, pressed && { opacity: 0.7 }]}
@@ -128,7 +285,7 @@ export default function BlockDetailScreen() {
           <Pressable
             key={opt.value}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
               setStatus(opt.value);
             }}
             style={[styles.statusChip, status === opt.value && { backgroundColor: opt.color + "22", borderColor: opt.color }]}
@@ -144,7 +301,7 @@ export default function BlockDetailScreen() {
           <Pressable
             key={t}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
               setTab(t);
             }}
             style={[styles.tab, tab === t && styles.tabActive]}
@@ -162,54 +319,59 @@ export default function BlockDetailScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
       >
+        {/* ── Actuals tab ── */}
         {tab === "actuals" && (
           <View style={styles.section}>
-            <View style={styles.timeRow}>
-              <View style={styles.timeField}>
-                <Text style={styles.fieldLabel}>Actual Start</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={actualStart}
-                  onChangeText={setActualStart}
-                  placeholder={block.plannedStart}
-                  placeholderTextColor={Colors.light.textMuted}
-                  keyboardType="numbers-and-punctuation"
-                />
-              </View>
-              <View style={styles.timeField}>
-                <Text style={styles.fieldLabel}>Actual End</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={actualEnd}
-                  onChangeText={setActualEnd}
-                  placeholder={block.plannedEnd}
-                  placeholderTextColor={Colors.light.textMuted}
-                  keyboardType="numbers-and-punctuation"
-                />
-              </View>
-            </View>
+            <TimeAdjuster
+              label="Actual Start"
+              value={actualStart}
+              plannedValue={block.plannedStart}
+              onChange={setActualStart}
+            />
+            <TimeAdjuster
+              label="Actual End"
+              value={actualEnd}
+              plannedValue={block.plannedEnd}
+              onChange={setActualEnd}
+            />
 
-            {block.startDevMin !== undefined && block.actualStart && (
+            {/* Live deviation summary */}
+            {(liveStartDevMin !== undefined || liveDurationDev !== undefined) && (
               <View style={styles.deviationCard}>
-                <Text style={styles.devTitle}>Deviations</Text>
-                <View style={styles.devRow}>
-                  <Text style={styles.devKey}>Start deviation</Text>
-                  <Text style={[styles.devVal, { color: block.startDevMin !== 0 ? Colors.light.amber : Colors.light.structuring }]}>
-                    {block.startDevMin > 0 ? `+${block.startDevMin}m` : block.startDevMin < 0 ? `${block.startDevMin}m` : "on time"}
-                  </Text>
-                </View>
-                <View style={styles.devRow}>
-                  <Text style={styles.devKey}>Duration deviation</Text>
-                  <Text style={[styles.devVal, { color: block.durationDevMin !== 0 ? Colors.light.amber : Colors.light.structuring }]}>
-                    {block.durationDevMin !== undefined ? (block.durationDevMin > 0 ? `+${block.durationDevMin}m` : block.durationDevMin < 0 ? `${block.durationDevMin}m` : "exact") : "—"}
-                  </Text>
-                </View>
-                <View style={styles.devRow}>
-                  <Text style={styles.devKey}>Adherence score</Text>
-                  <Text style={[styles.devVal, { color: (block.adherenceScore ?? 0) >= 70 ? Colors.light.structuring : Colors.light.amber }]}>
-                    {block.adherenceScore ?? "—"}%
-                  </Text>
-                </View>
+                <Text style={styles.devTitle}>Deviation preview</Text>
+                {liveStartDevMin !== undefined && (
+                  <View style={styles.devRow}>
+                    <Text style={styles.devKey}>Start</Text>
+                    <Text style={[styles.devVal, { color: liveStartDevMin !== 0 ? Colors.light.amber : Colors.light.structuring }]}>
+                      {fmtDev(liveStartDevMin)}
+                    </Text>
+                  </View>
+                )}
+                {liveEndDevMin !== undefined && (
+                  <View style={styles.devRow}>
+                    <Text style={styles.devKey}>End</Text>
+                    <Text style={[styles.devVal, { color: liveEndDevMin !== 0 ? Colors.light.amber : Colors.light.structuring }]}>
+                      {fmtDev(liveEndDevMin)}
+                    </Text>
+                  </View>
+                )}
+                {liveDurationActual !== undefined && liveDurationPlanned !== undefined && (
+                  <View style={styles.devRow}>
+                    <Text style={styles.devKey}>Duration</Text>
+                    <Text style={styles.devVal}>
+                      <Text style={{ color: Colors.light.text }}>{liveDurationActual}m</Text>
+                      <Text style={{ color: Colors.light.textMuted }}> planned {liveDurationPlanned}m</Text>
+                    </Text>
+                  </View>
+                )}
+                {liveAdherence !== undefined && (
+                  <View style={styles.devRow}>
+                    <Text style={styles.devKey}>Adherence</Text>
+                    <Text style={[styles.devVal, { color: liveAdherence >= 70 ? Colors.light.structuring : Colors.light.amber }]}>
+                      {liveAdherence}%
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -225,6 +387,7 @@ export default function BlockDetailScreen() {
           </View>
         )}
 
+        {/* ── Ratings tab ── */}
         {tab === "ratings" && (
           <View style={styles.section}>
             <Text style={styles.ratingNote}>
@@ -245,6 +408,7 @@ export default function BlockDetailScreen() {
           </View>
         )}
 
+        {/* ── Sensory tab ── */}
         {tab === "sensory" && (
           <View style={styles.section}>
             <Text style={styles.ratingNote}>
@@ -265,7 +429,7 @@ export default function BlockDetailScreen() {
                 <Switch
                   value={!!sensory[key]}
                   onValueChange={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
                     toggleSensory(key);
                   }}
                   trackColor={{ false: Colors.light.creamDark, true: Colors.light.sageLight }}
@@ -286,6 +450,7 @@ export default function BlockDetailScreen() {
         )}
       </ScrollView>
 
+      {/* Footer */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         <Pressable
           onPress={() => router.back()}
@@ -310,29 +475,25 @@ const styles = StyleSheet.create({
   closeBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   title: { flex: 1, fontFamily: "Inter_700Bold", fontSize: 18, color: Colors.light.text, letterSpacing: -0.3 },
   deleteBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  blockMeta: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 10 },
+  blockMeta: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 10, flexWrap: "wrap" },
   metaTime: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textMuted },
   metaType: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textMuted, textTransform: "capitalize" },
-  trainingShortcut: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: Colors.light.tint, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, marginLeft: 4 },
+  trainingShortcut: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: Colors.light.tint, borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 4, marginLeft: 4,
+  },
   trainingShortcutText: { fontFamily: "Inter_600SemiBold", fontSize: 11, color: Colors.light.surface },
   statusRow: { flexGrow: 0, marginBottom: 8 },
   statusRowContent: { paddingHorizontal: 16, gap: 6 },
   statusChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: Colors.light.surface,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8,
+    backgroundColor: Colors.light.surface, borderWidth: 1, borderColor: Colors.light.border,
   },
   statusChipText: { fontFamily: "Inter_500Medium", fontSize: 13, color: Colors.light.textMuted },
   tabs: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    backgroundColor: Colors.light.creamMid,
-    borderRadius: 10,
-    padding: 3,
-    marginBottom: 12,
+    flexDirection: "row", marginHorizontal: 16,
+    backgroundColor: Colors.light.creamMid, borderRadius: 10, padding: 3, marginBottom: 12,
   },
   tab: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center" },
   tabActive: { backgroundColor: Colors.light.surface },
@@ -340,48 +501,49 @@ const styles = StyleSheet.create({
   tabTextActive: { fontFamily: "Inter_600SemiBold", color: Colors.light.text },
   scroll: { paddingHorizontal: 16 },
   section: {},
-  timeRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
-  timeField: { flex: 1 },
-  fieldLabel: { fontFamily: "Inter_500Medium", fontSize: 12, color: Colors.light.textTertiary, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, marginTop: 12 },
-  fieldLabelSection: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: Colors.light.text, marginTop: 16, marginBottom: 10 },
+  fieldLabel: {
+    fontFamily: "Inter_500Medium", fontSize: 12, color: Colors.light.textTertiary,
+    textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, marginTop: 12,
+  },
+  fieldLabelSection: {
+    fontFamily: "Inter_600SemiBold", fontSize: 14, color: Colors.light.text, marginTop: 16, marginBottom: 10,
+  },
   textInput: {
-    backgroundColor: Colors.light.surface,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontFamily: "Inter_400Regular",
-    fontSize: 15,
-    color: Colors.light.text,
+    backgroundColor: Colors.light.surface, borderWidth: 1, borderColor: Colors.light.border,
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
+    fontFamily: "Inter_400Regular", fontSize: 15, color: Colors.light.text,
   },
   notesInput: { height: 80, textAlignVertical: "top" },
   deviationCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    padding: 12,
-    marginTop: 12,
-    marginBottom: 4,
+    backgroundColor: Colors.light.surface, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.light.border,
+    padding: 12, marginBottom: 4,
   },
-  devTitle: { fontFamily: "Inter_600SemiBold", fontSize: 12, color: Colors.light.textSecondary, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 },
-  devRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4 },
+  devTitle: {
+    fontFamily: "Inter_600SemiBold", fontSize: 11, color: Colors.light.textMuted,
+    textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8,
+  },
+  devRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
   devKey: { fontFamily: "Inter_400Regular", fontSize: 13, color: Colors.light.textSecondary },
   devVal: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
-  ratingNote: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textSecondary, lineHeight: 18, backgroundColor: Colors.light.creamMid, borderRadius: 8, padding: 10, marginBottom: 12 },
-  sensoryRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight },
+  ratingNote: {
+    fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textSecondary,
+    lineHeight: 18, backgroundColor: Colors.light.creamMid, borderRadius: 8,
+    padding: 10, marginBottom: 12,
+  },
+  sensoryRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight,
+  },
   sensoryLabel: { fontFamily: "Inter_400Regular", fontSize: 14, color: Colors.light.text },
   footer: {
-    flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
-    backgroundColor: Colors.light.background,
+    flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingTop: 12,
+    borderTopWidth: 1, borderTopColor: Colors.light.border, backgroundColor: Colors.light.background,
   },
-  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1, borderColor: Colors.light.border, alignItems: "center" },
+  cancelBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.light.border, alignItems: "center",
+  },
   cancelBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: Colors.light.textSecondary },
   saveBtn: { flex: 2, backgroundColor: Colors.light.tint, paddingVertical: 14, borderRadius: 10, alignItems: "center" },
   saveBtnText: { fontFamily: "Inter_700Bold", fontSize: 15, color: Colors.light.surface },
