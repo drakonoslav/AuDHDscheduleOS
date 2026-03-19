@@ -205,7 +205,8 @@ export interface TrainingLog {
   date: string;
   type: "cardio" | "lift";
   plannedTime: string;
-  actualTime?: string;
+  actualStart?: string;
+  actualTime?: string;   // actual end
   duration?: number;               // minutes
   intensity?: "low" | "moderate" | "high";
   preLiftMealTiming?: number;      // minutes before

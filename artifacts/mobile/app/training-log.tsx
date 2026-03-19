@@ -25,22 +25,106 @@ function timeToMinutes(hhmm: string): number {
   return (h ?? 0) * 60 + (m ?? 0);
 }
 
+function minutesToHhmm(totalMinutes: number): string {
+  const wrapped = ((totalMinutes % 1440) + 1440) % 1440;
+  const h = Math.floor(wrapped / 60);
+  const m = wrapped % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+}
+
+function nudgeTime(hhmm: string, deltaMins: number): string {
+  if (!hhmm.match(/^\d{2}:\d{2}$/)) {
+    const now = new Date();
+    const base = now.getHours() * 60 + now.getMinutes();
+    return minutesToHhmm(base + deltaMins);
+  }
+  return minutesToHhmm(timeToMinutes(hhmm) + deltaMins);
+}
+
 function deriveDuration(start: string, end: string): number {
   const diff = timeToMinutes(end) - timeToMinutes(start);
   return diff > 0 ? diff : 0;
 }
+
+// ─── Time nudger component ─────────────────────────────────────────────────────
+
+interface TimeNudgerProps {
+  label: string;
+  value: string;
+  plannedValue?: string;
+  onChange: (val: string) => void;
+}
+
+function TimeNudger({ label, value, plannedValue, onChange }: TimeNudgerProps) {
+  const nudge = (delta: number) => {
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
+    onChange(nudgeTime(value, delta));
+  };
+
+  const handleOnPlan = () => {
+    if (!plannedValue) return;
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch (_) {}
+    onChange(plannedValue);
+  };
+
+  const isOnPlan = !!plannedValue && value === plannedValue;
+
+  return (
+    <View style={nudgerStyles.container}>
+      <View style={nudgerStyles.header}>
+        <Text style={nudgerStyles.label}>{label}</Text>
+        {plannedValue ? (
+          <Pressable
+            onPress={handleOnPlan}
+            style={[nudgerStyles.onPlanChip, isOnPlan && nudgerStyles.onPlanChipActive]}
+          >
+            {isOnPlan && (
+              <Feather name="check" size={10} color={Colors.light.sage} />
+            )}
+            <Text style={[nudgerStyles.onPlanText, isOnPlan && nudgerStyles.onPlanTextActive]}>
+              {isOnPlan ? "On plan" : `On plan (${plannedValue})`}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <View style={nudgerStyles.row}>
+        <Pressable onPress={() => nudge(-5)} style={nudgerStyles.bigNudge} hitSlop={6}>
+          <Text style={nudgerStyles.bigNudgeText}>−5</Text>
+        </Pressable>
+        <Pressable onPress={() => nudge(-1)} style={nudgerStyles.smallNudge} hitSlop={6}>
+          <Text style={nudgerStyles.smallNudgeText}>−1</Text>
+        </Pressable>
+        <TextInput
+          style={nudgerStyles.timeInput}
+          value={value}
+          onChangeText={onChange}
+          placeholder="HH:MM"
+          placeholderTextColor={Colors.light.textMuted}
+          keyboardType="numbers-and-punctuation"
+          textAlign="center"
+        />
+        <Pressable onPress={() => nudge(1)} style={nudgerStyles.smallNudge} hitSlop={6}>
+          <Text style={nudgerStyles.smallNudgeText}>+1</Text>
+        </Pressable>
+        <Pressable onPress={() => nudge(5)} style={nudgerStyles.bigNudge} hitSlop={6}>
+          <Text style={nudgerStyles.bigNudgeText}>+5</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function TrainingLogScreen() {
   const insets = useSafeAreaInsets();
   const { state, today, addTrainingLog, trainingForDate } = useApp();
   const params = useLocalSearchParams<{ blockId?: string; date?: string; type?: string }>();
 
-  // ─── Derive pre-fill from block params ───────────────────────────────────────
   const sourceBlock = useMemo(() => {
     if (params.blockId) {
       return state.blocks.find((b) => b.id === params.blockId) ?? null;
     }
-    // Auto-match: find the first unlogged cardio/lift block for the target date
     const targetDate = params.date ?? today;
     const existing = trainingForDate(targetDate);
     const blocksForDay = state.blocks.filter((b) => b.date === targetDate);
@@ -58,18 +142,9 @@ export default function TrainingLogScreen() {
   const preFilled = sourceBlock !== null;
   const targetDate = params.date ?? today;
 
-  // ─── Form state — initialised once from sourceBlock or defaults ───────────────
-  const [type, setType] = useState<TrainingType>(() => {
-    if (sourceBlock?.blockType === "cardio") return "cardio";
-    if (sourceBlock?.blockType === "lift") return "lift";
-    if (params.type === "cardio") return "cardio";
-    return "lift";
-  });
+  // ─── Derive planned end from block or from planned start + duration ────────
   const [plannedTime, setPlannedTime] = useState(
     () => sourceBlock?.plannedStart ?? "06:00"
-  );
-  const [actualTime, setActualTime] = useState(
-    () => sourceBlock?.actualStart ?? ""
   );
   const [duration, setDuration] = useState(() => {
     if (sourceBlock) {
@@ -78,6 +153,31 @@ export default function TrainingLogScreen() {
     }
     return "60";
   });
+
+  const plannedEnd = useMemo(() => {
+    if (sourceBlock?.plannedEnd) return sourceBlock.plannedEnd;
+    if (plannedTime.match(/^\d{2}:\d{2}$/)) {
+      const dur = parseInt(duration) || 60;
+      return minutesToHhmm(timeToMinutes(plannedTime) + dur);
+    }
+    return "";
+  }, [sourceBlock, plannedTime, duration]);
+
+  // ─── Form state ────────────────────────────────────────────────────────────
+  const [type, setType] = useState<TrainingType>(() => {
+    if (sourceBlock?.blockType === "cardio") return "cardio";
+    if (sourceBlock?.blockType === "lift") return "lift";
+    if (params.type === "cardio") return "cardio";
+    return "lift";
+  });
+  // Actual start — pre-fill with planned start when block exists (on schedule)
+  const [actualStart, setActualStart] = useState(
+    () => sourceBlock?.plannedStart ?? ""
+  );
+  // Actual end — pre-fill with planned end when block exists
+  const [actualTime, setActualTime] = useState(
+    () => (sourceBlock?.plannedEnd ?? "")
+  );
   const [intensity, setIntensity] = useState<Intensity>("moderate");
   const [preLiftMeal, setPreLiftMeal] = useState("45");
   const [postLiftMeal, setPostLiftMeal] = useState("30");
@@ -92,16 +192,13 @@ export default function TrainingLogScreen() {
 
   const existing = trainingForDate(targetDate);
 
-  // Auto-derive duration when user enters a valid actual end time
+  // Auto-derive duration from actual start → actual end
   useEffect(() => {
-    if (
-      actualTime.match(/^\d{2}:\d{2}$/) &&
-      plannedTime.match(/^\d{2}:\d{2}$/)
-    ) {
-      const d = deriveDuration(plannedTime, actualTime);
+    if (actualStart.match(/^\d{2}:\d{2}$/) && actualTime.match(/^\d{2}:\d{2}$/)) {
+      const d = deriveDuration(actualStart, actualTime);
       if (d > 0) setDuration(d.toString());
     }
-  }, [actualTime, plannedTime]);
+  }, [actualStart, actualTime]);
 
   const handleSave = () => {
     const log: TrainingLog = {
@@ -109,6 +206,7 @@ export default function TrainingLogScreen() {
       date: targetDate,
       type,
       plannedTime,
+      actualStart: actualStart.trim() || undefined,
       actualTime: actualTime.trim() || undefined,
       duration: parseInt(duration) || undefined,
       intensity,
@@ -124,9 +222,15 @@ export default function TrainingLogScreen() {
       notes: notes.trim() || undefined,
     };
     addTrainingLog(log);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
     router.back();
   };
+
+  // Adherence delta for display
+  const adherenceDelta = useMemo(() => {
+    if (!actualStart.match(/^\d{2}:\d{2}$/) || !plannedTime.match(/^\d{2}:\d{2}$/)) return null;
+    return timeToMinutes(actualStart) - timeToMinutes(plannedTime);
+  }, [actualStart, plannedTime]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
@@ -151,7 +255,8 @@ export default function TrainingLogScreen() {
             <Text style={styles.preFillText}>
               Pre-filled from{" "}
               <Text style={styles.preFillBlock}>"{sourceBlock.label}"</Text>
-              {" "}— {sourceBlock.plannedStart}–{sourceBlock.plannedEnd}. Adjust anything that changed.
+              {" "}({sourceBlock.plannedStart}–{sourceBlock.plannedEnd}).
+              Nudge actuals if you ran early or late.
             </Text>
           </View>
         )}
@@ -176,7 +281,7 @@ export default function TrainingLogScreen() {
             <Pressable
               key={t}
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
                 setType(t);
               }}
               style={[styles.typeChip, type === t && styles.typeChipSelected]}
@@ -195,41 +300,66 @@ export default function TrainingLogScreen() {
 
         <Text style={styles.sectionTitle}>Timing</Text>
 
-        {/* Planned time is pre-filled — show inline label when it came from a block */}
-        <View style={styles.timeRow}>
-          <View style={styles.timeField}>
-            <Text style={styles.fieldLabel}>
-              Planned{preFilled ? " (from block)" : ""}
-            </Text>
-            <TextInput
-              style={[styles.textInput, preFilled && styles.textInputPrefilled]}
-              value={plannedTime}
-              onChangeText={setPlannedTime}
-              placeholder="HH:MM"
-              placeholderTextColor={Colors.light.textMuted}
-              keyboardType="numbers-and-punctuation"
-            />
+        {/* Planned reference row */}
+        <View style={styles.plannedRow}>
+          <Feather name="calendar" size={13} color={Colors.light.textMuted} />
+          <Text style={styles.plannedLabel}>
+            Planned: {plannedTime}
+            {plannedEnd ? ` → ${plannedEnd}` : ""}
+            {" "}
+            <Text style={styles.plannedDuration}>({duration} min)</Text>
+          </Text>
+        </View>
+
+        {/* Actual start nudger */}
+        <TimeNudger
+          label="Actual Start"
+          value={actualStart}
+          plannedValue={plannedTime}
+          onChange={setActualStart}
+        />
+
+        {/* Actual end nudger */}
+        <TimeNudger
+          label="Actual End"
+          value={actualTime}
+          plannedValue={plannedEnd || undefined}
+          onChange={setActualTime}
+        />
+
+        {/* Derived duration + adherence chip */}
+        <View style={styles.durationRow}>
+          <View style={styles.durationBox}>
+            <Text style={styles.durationLabel}>Duration</Text>
+            <View style={styles.durationValueRow}>
+              <TextInput
+                style={styles.durationInput}
+                value={duration}
+                onChangeText={setDuration}
+                keyboardType="number-pad"
+                textAlign="center"
+              />
+              <Text style={styles.durationUnit}>min</Text>
+            </View>
           </View>
-          <View style={styles.timeField}>
-            <Text style={styles.fieldLabel}>Actual End</Text>
-            <TextInput
-              style={styles.textInput}
-              value={actualTime}
-              onChangeText={setActualTime}
-              placeholder="HH:MM"
-              placeholderTextColor={Colors.light.textMuted}
-              keyboardType="numbers-and-punctuation"
-            />
-          </View>
-          <View style={styles.timeField}>
-            <Text style={styles.fieldLabel}>Duration (min)</Text>
-            <TextInput
-              style={styles.textInput}
-              value={duration}
-              onChangeText={setDuration}
-              keyboardType="number-pad"
-            />
-          </View>
+          {adherenceDelta !== null && (
+            <View style={[
+              styles.adherenceChip,
+              adherenceDelta === 0
+                ? styles.adherenceOnTime
+                : adherenceDelta < 0
+                ? styles.adherenceEarly
+                : styles.adherenceLate,
+            ]}>
+              <Text style={styles.adherenceText}>
+                {adherenceDelta === 0
+                  ? "On plan"
+                  : adherenceDelta < 0
+                  ? `${Math.abs(adherenceDelta)}m early`
+                  : `${adherenceDelta}m late`}
+              </Text>
+            </View>
+          )}
         </View>
 
         <Text style={styles.sectionTitle}>Intensity</Text>
@@ -238,7 +368,7 @@ export default function TrainingLogScreen() {
             <Pressable
               key={i}
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
                 setIntensity(i);
               }}
               style={[styles.intensityChip, intensity === i && styles.intensityChipSelected]}
@@ -310,6 +440,96 @@ export default function TrainingLogScreen() {
   );
 }
 
+// ─── TimeNudger styles ─────────────────────────────────────────────────────────
+
+const nudgerStyles = StyleSheet.create({
+  container: { marginBottom: 10 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  label: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    color: Colors.light.textTertiary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  onPlanChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  onPlanChipActive: {
+    backgroundColor: Colors.light.phaseStructuring,
+    borderColor: Colors.light.sageLight,
+  },
+  onPlanText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+  },
+  onPlanTextActive: {
+    color: Colors.light.sage,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  bigNudge: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bigNudgeText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: Colors.light.text,
+  },
+  smallNudge: {
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: Colors.light.creamMid,
+    borderWidth: 1,
+    borderColor: Colors.light.borderLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  smallNudgeText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+  },
+  timeInput: {
+    flex: 1,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.light.tint,
+    borderRadius: 10,
+    paddingVertical: 12,
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 16,
+    color: Colors.light.text,
+  },
+});
+
+// ─── Screen styles ─────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
   header: {
@@ -378,6 +598,89 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.light.borderLight,
     paddingBottom: 6,
   },
+  plannedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.light.creamMid,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.borderLight,
+  },
+  plannedLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+  },
+  plannedDuration: {
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.textMuted,
+  },
+  durationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  durationBox: {
+    alignItems: "center",
+  },
+  durationLabel: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    color: Colors.light.textTertiary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  durationValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  durationInput: {
+    width: 56,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 8,
+    paddingVertical: 8,
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: Colors.light.text,
+  },
+  durationUnit: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.light.textMuted,
+  },
+  adherenceChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  adherenceOnTime: {
+    backgroundColor: Colors.light.phaseStructuring,
+    borderColor: Colors.light.sageLight,
+  },
+  adherenceEarly: {
+    backgroundColor: "#E8F4FD",
+    borderColor: "#B8D8F0",
+  },
+  adherenceLate: {
+    backgroundColor: "#FEF3E8",
+    borderColor: "#F5D5A8",
+  },
+  adherenceText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: Colors.light.text,
+  },
   typeRow: { flexDirection: "row", gap: 10 },
   typeChip: {
     flex: 1,
@@ -436,10 +739,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 14,
     color: Colors.light.text,
-  },
-  textInputPrefilled: {
-    backgroundColor: Colors.light.phaseStructuring,
-    borderColor: Colors.light.sageLight,
   },
   notesInput: { height: 80, textAlignVertical: "top", marginTop: 6 },
   footer: {
