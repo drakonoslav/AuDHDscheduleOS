@@ -72,8 +72,8 @@ function BlockCard({ block, onPress }: { block: ScheduleBlock; onPress: () => vo
     >
       <View style={[styles.blockLeft, { borderLeftColor: statusColor }]}>
         <View style={styles.blockTimeCol}>
-          <Text style={styles.blockTime}>{block.plannedStart}</Text>
-          <Text style={styles.blockTimeEnd}>{block.plannedEnd}</Text>
+          <Text style={styles.blockTime} numberOfLines={1}>{block.plannedStart}</Text>
+          <Text style={styles.blockTimeEnd} numberOfLines={1}>{block.plannedEnd}</Text>
         </View>
         <View style={[styles.blockIconCircle, { backgroundColor: Colors.light.creamMid }]}>
           <Feather name={icon as never} size={14} color={Colors.light.textSecondary} />
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
   },
   blockTimeCol: {
-    width: 36,
+    width: 44,
   },
   blockTime: {
     fontFamily: "Inter_600SemiBold",
