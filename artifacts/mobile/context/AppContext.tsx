@@ -17,7 +17,7 @@ import type {
   TrainingLog,
   WeeklyRecommendation,
 } from "@/types";
-import { calcBlockDeviations, calcDayScores, loadAppState, saveAppState } from "@/storage/storage";
+import { calcBlockDeviations, calcDayScores, loadAppState, saveAppState, SCHEDULE_SEED_TEMPLATES } from "@/storage/storage";
 import { generateRecommendations } from "@/engine/recommendations";
 
 interface AppContextType {
@@ -53,6 +53,7 @@ interface AppContextType {
   completeOnboarding: (phaseId: NutritionPhaseId) => void;
   // Setup wizard
   completeSetupWizard: (config: ScheduleWizardConfig, templates: BlockTemplate[]) => void;
+  importScheduleSeed: () => void;
   // Backup / restore — atomically replaces the entire app state
   importAppState: (newState: AppState) => void;
 }
@@ -344,6 +345,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [updateState]
   );
 
+  // ─── Schedule Seed import ───────────────────────────────────────
+  // Replaces all auto-generated templates with the verified ground-truth seed.
+  // User-created templates (non seed_*, non wizard_*, non meal_seed_*) are kept.
+  const importScheduleSeed = useCallback(() => {
+    updateState((s) => {
+      const kept = (s.blockTemplates ?? []).filter(
+        (t) =>
+          !t.id.startsWith("seed_") &&
+          !t.id.startsWith("wizard_") &&
+          !t.id.startsWith("meal_seed_"),
+      );
+      return {
+        ...s,
+        setupWizardComplete: true,
+        blockTemplates: [...SCHEDULE_SEED_TEMPLATES, ...kept],
+      };
+    });
+  }, [updateState]);
+
   // ─── Backup / restore ──────────────────────────────────────────
   // Atomically replaces the entire app state with an imported backup.
   // Derived fields (adherenceScore, pullScores, etc.) must already be
@@ -383,6 +403,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         quantitativeLogForDate,
         completeOnboarding,
         completeSetupWizard,
+        importScheduleSeed,
         importAppState,
       }}
     >

@@ -7,6 +7,7 @@ const KEYS = {
   APP_STATE: "@audhd_os_state_v1",
   MEAL_SEED: "@audhd_os_meal_seed_v1",
   DEDUP_MIGRATION: "@audhd_os_dedup_v1",
+  SCHEDULE_SEED_MIGRATION: "@audhd_os_schedule_seed_v2",
 };
 
 const DEFAULT_STATE: AppState = {
@@ -21,81 +22,49 @@ const DEFAULT_STATE: AppState = {
   setupWizardComplete: false,
 };
 
-// ─── Seeded meal block templates ──────────────────────────────────────────────
-// Added once on first load via MEAL_SEED key. Deletable by user without
-// returning on reload. IDs are fixed so the seed guard works correctly.
+// ─── Ground-truth schedule seed ───────────────────────────────────────────────
+// Full verified schedule: all 16 blocks across all days.
+// Used by SeedGateway "Implant Schedule Seed" and the v2 migration.
+// IDs use the "seed_" prefix so completeSetupWizard / completeScheduleSeed
+// strip them correctly on a re-seed.
+export const SCHEDULE_SEED_TEMPLATES: BlockTemplate[] = [
+  { id: "seed_wake",          label: "Wake",           blockType: "wake",     phaseTag: "structuring", startTime: "05:25", endTime: "05:30", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_precardio",     label: "Pre Cardio",     blockType: "meal",     phaseTag: "structuring", startTime: "05:40", endTime: "05:50", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_cardio",        label: "Cardio",         blockType: "cardio",   phaseTag: "expansion",   startTime: "05:50", endTime: "06:30", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_shower_am",     label: "Shower",         blockType: "hygiene",  phaseTag: "structuring", startTime: "06:30", endTime: "06:35", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_postcardio",    label: "Post Cardio",    blockType: "meal",     phaseTag: "recovery",    startTime: "06:35", endTime: "06:45", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_commute_am",    label: "Commute AM",     blockType: "commute",  phaseTag: "structuring", startTime: "06:40", endTime: "07:00", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_work",          label: "Work",           blockType: "work",     phaseTag: "structuring", startTime: "07:00", endTime: "16:40", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_midmorning",    label: "Mid Morning",    blockType: "meal",     phaseTag: "structuring", startTime: "09:30", endTime: "09:40", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_proteinreserve",label: "Protein Reserve",blockType: "meal",     phaseTag: "recovery",    startTime: "12:30", endTime: "12:40", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_prelift",       label: "Pre Lift",       blockType: "meal",     phaseTag: "structuring", startTime: "15:45", endTime: "15:55", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_commute_pm",    label: "Commute PM",     blockType: "commute",  phaseTag: "structuring", startTime: "16:40", endTime: "17:00", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_lift",          label: "Lift",           blockType: "lift",     phaseTag: "expansion",   startTime: "17:00", endTime: "18:15", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_postlift",      label: "Post Lift",      blockType: "meal",     phaseTag: "recovery",    startTime: "18:15", endTime: "18:25", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_shower_pm",     label: "Shower",         blockType: "hygiene",  phaseTag: "structuring", startTime: "19:15", endTime: "19:30", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_evening",       label: "Evening",        blockType: "meal",     phaseTag: "structuring", startTime: "19:30", endTime: "19:40", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "seed_bed",           label: "Bed",            blockType: "bedtime",  phaseTag: "recovery",    startTime: "21:25", endTime: "21:30", daysOfWeek: [0,1,2,3,4,5,6] },
+];
+
+// ─── Legacy meal-only seed (fresh install fallback) ───────────────────────────
+// Only seeded when the full schedule seed hasn't been applied yet.
 const MEAL_SEED_TEMPLATES: BlockTemplate[] = [
-  {
-    id: "meal_seed_precardio",
-    label: "Pre Cardio",
-    blockType: "meal",
-    phaseTag: "structuring",
-    startTime: "05:35",
-    endTime: "05:45",
-    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-  },
-  {
-    id: "meal_seed_postcardio",
-    label: "Post Cardio",
-    blockType: "meal",
-    phaseTag: "recovery",
-    startTime: "08:35",
-    endTime: "08:45",
-    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-  },
-  {
-    id: "meal_seed_midmorning",
-    label: "Mid Morning",
-    blockType: "meal",
-    phaseTag: "structuring",
-    startTime: "11:35",
-    endTime: "11:45",
-    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-  },
-  {
-    id: "meal_seed_prelift",
-    label: "Pre Lift",
-    blockType: "meal",
-    phaseTag: "structuring",
-    startTime: "14:35",
-    endTime: "14:45",
-    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-  },
-  {
-    id: "meal_seed_postlift",
-    label: "Post Lift",
-    blockType: "meal",
-    phaseTag: "recovery",
-    startTime: "18:00",
-    endTime: "18:10",
-    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-  },
-  {
-    id: "meal_seed_evening",
-    label: "Evening",
-    blockType: "meal",
-    phaseTag: "structuring",
-    startTime: "20:00",
-    endTime: "20:10",
-    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-  },
-  {
-    id: "meal_seed_proteinreserve",
-    label: "Protein Reserve",
-    blockType: "meal",
-    phaseTag: "recovery",
-    startTime: "22:00",
-    endTime: "22:10",
-    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-  },
+  { id: "meal_seed_precardio",     label: "Pre Cardio",     blockType: "meal", phaseTag: "structuring", startTime: "05:40", endTime: "05:50", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "meal_seed_postcardio",    label: "Post Cardio",    blockType: "meal", phaseTag: "recovery",    startTime: "06:35", endTime: "06:45", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "meal_seed_midmorning",    label: "Mid Morning",    blockType: "meal", phaseTag: "structuring", startTime: "09:30", endTime: "09:40", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "meal_seed_proteinreserve",label: "Protein Reserve",blockType: "meal", phaseTag: "recovery",    startTime: "12:30", endTime: "12:40", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "meal_seed_prelift",       label: "Pre Lift",       blockType: "meal", phaseTag: "structuring", startTime: "15:45", endTime: "15:55", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "meal_seed_postlift",      label: "Post Lift",      blockType: "meal", phaseTag: "recovery",    startTime: "18:15", endTime: "18:25", daysOfWeek: [0,1,2,3,4,5,6] },
+  { id: "meal_seed_evening",       label: "Evening",        blockType: "meal", phaseTag: "structuring", startTime: "19:30", endTime: "19:40", daysOfWeek: [0,1,2,3,4,5,6] },
 ];
 
 export async function loadAppState(): Promise<AppState> {
   try {
-    const [raw, seeded, deduped] = await Promise.all([
+    const [raw, seeded, deduped, scheduleSeeded] = await Promise.all([
       AsyncStorage.getItem(KEYS.APP_STATE),
       AsyncStorage.getItem(KEYS.MEAL_SEED),
       AsyncStorage.getItem(KEYS.DEDUP_MIGRATION),
+      AsyncStorage.getItem(KEYS.SCHEDULE_SEED_MIGRATION),
     ]);
 
     const base: AppState = raw
@@ -126,6 +95,22 @@ export async function loadAppState(): Promise<AppState> {
         await saveAppState(base);
       }
       await AsyncStorage.setItem(KEYS.DEDUP_MIGRATION, "1");
+    }
+
+    // v2 migration: replace any wizard_* / meal_seed_* / old seed_* templates
+    // with the verified ground-truth SCHEDULE_SEED_TEMPLATES. Preserves any
+    // user-created templates (IDs that don't match those prefixes).
+    if (!scheduleSeeded) {
+      const kept = base.blockTemplates.filter(
+        (t) =>
+          !t.id.startsWith("wizard_") &&
+          !t.id.startsWith("meal_seed_") &&
+          !t.id.startsWith("seed_"),
+      );
+      base.blockTemplates = [...SCHEDULE_SEED_TEMPLATES, ...kept];
+      base.setupWizardComplete = true;
+      await saveAppState(base);
+      await AsyncStorage.setItem(KEYS.SCHEDULE_SEED_MIGRATION, "1");
     }
 
     return base;

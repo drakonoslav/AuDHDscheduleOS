@@ -839,13 +839,13 @@ function GenerateStep({
 
 // ─── Main wizard ──────────────────────────────────────────────────────────────
 
-export function SetupWizard() {
+export function SetupWizard({ forceVisible = false }: { forceVisible?: boolean }) {
   const insets = useSafeAreaInsets();
   const { completeSetupWizard, isLoaded, state } = useApp();
   const [step, setStep] = useState<Step>("welcome");
   const [config, setConfig] = useState<ScheduleWizardConfig>(DEFAULT_CONFIG);
 
-  if (!isLoaded || !state.onboardingComplete || state.setupWizardComplete) {
+  if (!forceVisible && (!isLoaded || !state.onboardingComplete || state.setupWizardComplete)) {
     return null;
   }
 

@@ -15,7 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Onboarding } from "@/components/Onboarding";
-import { SetupWizard } from "@/components/SetupWizard";
+import { SeedGateway } from "@/components/SeedGateway";
 import { AppProvider } from "@/context/AppContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -104,7 +104,7 @@ export default function RootLayout() {
               <KeyboardProvider>
                 <RootLayoutNav />
                 <Onboarding />
-                <SetupWizard />
+                <SeedGateway />
               </KeyboardProvider>
             </GestureHandlerRootView>
           </AppProvider>
