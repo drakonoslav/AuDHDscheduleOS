@@ -1,10 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AppState, QuantitativeDailyLog, ScheduleBlock } from "@/types";
+import type { AppState, BlockTemplate, QuantitativeDailyLog, ScheduleBlock } from "@/types";
 
 export type { QuantitativeDailyLog };
 
 const KEYS = {
   APP_STATE: "@audhd_os_state_v1",
+  MEAL_SEED: "@audhd_os_meal_seed_v1",
 };
 
 const DEFAULT_STATE: AppState = {
@@ -18,14 +19,100 @@ const DEFAULT_STATE: AppState = {
   onboardingComplete: false,
 };
 
+// ─── Seeded meal block templates ──────────────────────────────────────────────
+// Added once on first load via MEAL_SEED key. Deletable by user without
+// returning on reload. IDs are fixed so the seed guard works correctly.
+const MEAL_SEED_TEMPLATES: BlockTemplate[] = [
+  {
+    id: "meal_seed_precardio",
+    label: "Pre Cardio",
+    blockType: "meal",
+    phaseTag: "structuring",
+    startTime: "05:35",
+    endTime: "05:45",
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+  },
+  {
+    id: "meal_seed_postcardio",
+    label: "Post Cardio",
+    blockType: "meal",
+    phaseTag: "recovery",
+    startTime: "08:35",
+    endTime: "08:45",
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+  },
+  {
+    id: "meal_seed_midmorning",
+    label: "Mid Morning",
+    blockType: "meal",
+    phaseTag: "structuring",
+    startTime: "11:35",
+    endTime: "11:45",
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+  },
+  {
+    id: "meal_seed_prelift",
+    label: "Pre Lift",
+    blockType: "meal",
+    phaseTag: "structuring",
+    startTime: "14:35",
+    endTime: "14:45",
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+  },
+  {
+    id: "meal_seed_postlift",
+    label: "Post Lift",
+    blockType: "meal",
+    phaseTag: "recovery",
+    startTime: "18:00",
+    endTime: "18:10",
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+  },
+  {
+    id: "meal_seed_evening",
+    label: "Evening",
+    blockType: "meal",
+    phaseTag: "structuring",
+    startTime: "20:00",
+    endTime: "20:10",
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+  },
+  {
+    id: "meal_seed_proteinreserve",
+    label: "Protein Reserve",
+    blockType: "meal",
+    phaseTag: "recovery",
+    startTime: "22:00",
+    endTime: "22:10",
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+  },
+];
+
 export async function loadAppState(): Promise<AppState> {
   try {
-    const raw = await AsyncStorage.getItem(KEYS.APP_STATE);
-    if (!raw) return DEFAULT_STATE;
-    const parsed = JSON.parse(raw) as Partial<AppState>;
-    return { ...DEFAULT_STATE, ...parsed };
+    const [raw, seeded] = await Promise.all([
+      AsyncStorage.getItem(KEYS.APP_STATE),
+      AsyncStorage.getItem(KEYS.MEAL_SEED),
+    ]);
+
+    const base: AppState = raw
+      ? { ...DEFAULT_STATE, ...(JSON.parse(raw) as Partial<AppState>) }
+      : { ...DEFAULT_STATE };
+
+    // One-time seed: add meal templates if this device hasn't been seeded yet.
+    // Uses a separate key so user-deleted templates don't come back.
+    if (!seeded) {
+      const existingIds = new Set(base.blockTemplates.map((t) => t.id));
+      const toAdd = MEAL_SEED_TEMPLATES.filter((t) => !existingIds.has(t.id));
+      if (toAdd.length > 0) {
+        base.blockTemplates = [...toAdd, ...base.blockTemplates];
+      }
+      await AsyncStorage.setItem(KEYS.MEAL_SEED, "1");
+    }
+
+    return base;
   } catch {
-    return DEFAULT_STATE;
+    return { ...DEFAULT_STATE, blockTemplates: MEAL_SEED_TEMPLATES };
   }
 }
 
