@@ -62,28 +62,6 @@ function todayStr(): string {
 
 // ─── (no browser-specific file I/O — handled via React Native Share / modal) ──
 
-function webImport(): Promise<string | null> {
-  return new Promise((resolve) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json,application/json";
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) { resolve(null); return; }
-      try {
-        const text = await file.text();
-        resolve(text);
-      } catch {
-        resolve(null);
-      }
-    };
-    input.oncancel = () => resolve(null);
-    document.body.appendChild(input);
-    input.click();
-    document.body.removeChild(input);
-  });
-}
-
 // ─── Count row component ──────────────────────────────────────────────────────
 
 function CountRow({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
@@ -202,26 +180,43 @@ export default function BackupScreen() {
       setImporting(true);
       setImportError(null);
       setImportStep("idle");
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
 
       let rawText: string | null = null;
 
-      const isWebEnv = typeof document !== "undefined";
-      if (isWebEnv) {
-        rawText = await webImport();
-      } else {
-        const result = await DocumentPicker.getDocumentAsync({
-          type: ["application/json", "*/*"],
-          copyToCacheDirectory: true,
-        });
-        if (result.canceled || !result.assets?.[0]) {
+      // Pick the file — DocumentPicker works on both native AND web
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/json", "*/*"],
+        copyToCacheDirectory: Platform.OS !== "web",
+      });
+      if (result.canceled || !result.assets?.[0]) {
+        setImporting(false);
+        return;
+      }
+      const uri = result.assets[0].uri;
+
+      // ── Strategy 1: expo-file-system (native Expo Go only)
+      if (Platform.OS !== "web") {
+        try {
+          const { readAsStringAsync } = await import("expo-file-system");
+          rawText = await readAsStringAsync(uri, { encoding: "utf8" as any });
+        } catch (_) {
+          // Native module unavailable — fall through
+        }
+      }
+
+      // ── Strategy 2: fetch() — works on web (blob://, data:, http:// URIs)
+      //    and as a fallback on native when expo-file-system fails
+      if (rawText === null) {
+        try {
+          const response = await fetch(uri);
+          rawText = await response.text();
+        } catch (fetchErr) {
+          setImportError(`Could not read file: ${String(fetchErr)}`);
+          setImportStep("error");
           setImporting(false);
           return;
         }
-        const { readAsStringAsync, EncodingType } = await import("expo-file-system");
-        rawText = await readAsStringAsync(result.assets[0].uri, {
-          encoding: EncodingType.UTF8,
-        });
       }
 
       if (!rawText) {
