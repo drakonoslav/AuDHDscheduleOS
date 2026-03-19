@@ -1,0 +1,84 @@
+This is very close — I want to lock down a few critical details before you build so the behavior matches exactly what I intend.
+
+Please confirm these refinements:
+
+1) Sleep disturbance logic
+This is not a stored block or template.
+
+It is a runtime rule:
+- Define sleep window as (bedtime_start to wake_end)
+- Any logged activity outside this window is flagged as a sleep disturbance
+- This is evaluated dynamically in logs/insights, not stored as data
+
+2) Meal placement must follow exact math
+
+Define:
+- wake_end
+- bedtime_start
+- usable_window = bedtime_start - wake_end
+- each meal = 10 minutes
+- gap_count = meal_count - 1
+- gap_size = (usable_window - (meal_count * 10min)) / gap_count
+
+Placement:
+- Meal 1 starts exactly at wake_end
+- Last meal ends exactly at bedtime_start
+- All intermediate meals are spaced using gap_size
+
+No heuristic spacing — must be deterministic.
+
+3) Anchor priority order (must be enforced)
+
+Placement must happen in this order:
+
+1. Wake
+2. Morning workout (if selected)
+3. Shower after workout
+4. Commute (morning)
+5. Work
+6. Commute (evening)
+7. Evening workout (if selected)
+8. Shower
+9. Bed
+10. Meals (distributed within wake→bed window respecting anchors)
+
+Micro blocks come LAST.
+
+4) Workout placement rules
+
+- If “morning” is selected:
+  place between wake_end and commute_start if it fits fully
+
+- If it does not fit:
+  push to next valid void (midday or evening)
+
+- Shower should follow workout when possible
+
+5) Micro-block fill constraints
+
+- Only fill remaining void intervals
+- Must not overlap:
+  - meals
+  - work
+  - commute
+  - workouts
+  - showers
+
+- Use greedy packing within each void interval
+- Respect user-defined ratios across selected types
+
+6) Weekday vs weekend separation
+
+- Workdays:
+  include work + commute anchors
+
+- Non-workdays:
+  no work/commute
+  full-day void fill (after meals + sleep)
+
+7) Determinism requirement
+
+Given the same inputs, the wizard must always produce the exact same template layout.
+No randomness.
+
+Please confirm all of the above before building.

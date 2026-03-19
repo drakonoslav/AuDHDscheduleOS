@@ -1,0 +1,270 @@
+This is actually a very strong exchange—you’re close—but there are a few critical clarifications you should force before Replit builds, otherwise you’ll get something that technically works but doesn’t behave how you intend.
+
+I’m going to tighten your intent into something Replit can’t misinterpret.
+
+⸻
+
+⚠️ What Replit got RIGHT
+
+They correctly understood:
+	•	This is a startup seeding wizard
+	•	Output = BlockTemplate records (not blocks)
+	•	Meals are spaced algorithmically
+	•	Work + commute are structural anchors
+	•	Micro-blocks = void-fill system
+	•	Wizard is run-once + rerunnable
+
+That’s all good.
+
+⸻
+
+❗ What is MISSING / NEEDS CORRECTION
+
+1. The sleep disturbance logic is underspecified
+
+Right now they said:
+
+“stored as metadata, used to flag out-of-window blocks”
+
+That’s too vague.
+
+You need to force this explicitly:
+	•	This is not just metadata
+	•	This is a derived daily rule applied at runtime
+
+👉 Clarify:
+	•	It should not create blocks
+	•	It should evaluate any logged activity outside the window
+	•	It should flag in Insights / Logs
+
+⸻
+
+2. Meal spacing algorithm is NOT precise enough yet
+
+They said:
+
+“equally spaced (best-fit integer spacing)”
+
+That’s dangerous because it can be implemented poorly.
+
+Your intent is:
+	•	Fixed endpoints
+	•	Equal spacing across usable window
+	•	Respect 10-min slot width
+
+👉 You need to explicitly define:
+
+usable_window = bedtime_start - wake_end
+total_meal_time = meal_count * 10min
+gap_count = meal_count - 1
+gap_size = (usable_window - total_meal_time) / gap_count
+
+Then:
+	•	meals are placed sequentially using gap_size
+
+Otherwise you’ll get weird clustering.
+
+⸻
+
+3. “First and last meal placement” needs tightening
+
+You said:
+	•	first meal = immediately after wake
+	•	last meal = just before bed
+
+But Replit didn’t explicitly confirm the exact positioning logic
+
+👉 Clarify:
+	•	Meal 1:
+	•	start = wake_end
+	•	end = wake_end + 10min
+	•	Last meal:
+	•	end = bedtime_start
+	•	start = bedtime_start - 10min
+
+Everything else is interpolated between those anchors.
+
+⸻
+
+4. Workout placement logic is too vague
+
+They said:
+
+“if it fits in the morning window before commute”
+
+That’s not enough.
+
+👉 You need to define priority:
+
+Order of placement:
+	1.	Wake
+	2.	Morning workout (if selected)
+	3.	Shower after workout
+	4.	Commute
+	5.	Work
+	6.	Evening commute
+	7.	Evening workout (if selected)
+	8.	Shower
+	9.	Bed
+
+Otherwise they may:
+	•	place workouts randomly in void
+	•	break your intended structure
+
+⸻
+
+5. Micro-block system needs a HARD constraint
+
+They said:
+
+“greedy packing respecting ratios”
+
+That’s good—but incomplete.
+
+👉 You must specify:
+	•	Micro blocks must NOT overlap fixed anchors
+	•	Must respect:
+	•	meals
+	•	work
+	•	commute
+	•	workouts
+	•	showers
+	•	Must fill only:
+remaining void intervals
+
+⸻
+
+6. Weekday vs weekend logic needs to be explicit
+
+They mentioned it—but not deeply.
+
+👉 You should clarify:
+	•	Work days:
+	•	use work + commute + constrained void
+	•	Non-work days:
+	•	no work or commute anchors
+	•	full-day void fill (after meals + sleep)
+
+⸻
+
+7. Critical missing concept: PRIORITY ORDER
+
+Right now this is implied—but not enforced.
+
+If they don’t enforce order, placement will break.
+
+⸻
+
+✅ What you should send back to Replit (clean, precise)
+
+Send this:
+
+This is very close — I want to lock down a few critical details before you build so the behavior matches exactly what I intend.
+
+Please confirm these refinements:
+
+1) Sleep disturbance logic
+This is not a stored block or template.
+
+It is a runtime rule:
+- Define sleep window as (bedtime_start to wake_end)
+- Any logged activity outside this window is flagged as a sleep disturbance
+- This is evaluated dynamically in logs/insights, not stored as data
+
+2) Meal placement must follow exact math
+
+Define:
+- wake_end
+- bedtime_start
+- usable_window = bedtime_start - wake_end
+- each meal = 10 minutes
+- gap_count = meal_count - 1
+- gap_size = (usable_window - (meal_count * 10min)) / gap_count
+
+Placement:
+- Meal 1 starts exactly at wake_end
+- Last meal ends exactly at bedtime_start
+- All intermediate meals are spaced using gap_size
+
+No heuristic spacing — must be deterministic.
+
+3) Anchor priority order (must be enforced)
+
+Placement must happen in this order:
+
+1. Wake
+2. Morning workout (if selected)
+3. Shower after workout
+4. Commute (morning)
+5. Work
+6. Commute (evening)
+7. Evening workout (if selected)
+8. Shower
+9. Bed
+10. Meals (distributed within wake→bed window respecting anchors)
+
+Micro blocks come LAST.
+
+4) Workout placement rules
+
+- If “morning” is selected:
+  place between wake_end and commute_start if it fits fully
+
+- If it does not fit:
+  push to next valid void (midday or evening)
+
+- Shower should follow workout when possible
+
+5) Micro-block fill constraints
+
+- Only fill remaining void intervals
+- Must not overlap:
+  - meals
+  - work
+  - commute
+  - workouts
+  - showers
+
+- Use greedy packing within each void interval
+- Respect user-defined ratios across selected types
+
+6) Weekday vs weekend separation
+
+- Workdays:
+  include work + commute anchors
+
+- Non-workdays:
+  no work/commute
+  full-day void fill (after meals + sleep)
+
+7) Determinism requirement
+
+Given the same inputs, the wizard must always produce the exact same template layout.
+No randomness.
+
+Please confirm all of the above before building.
+
+
+⸻
+
+🧠 Final take
+
+You’re doing something very smart here:
+
+This wizard is not just onboarding.
+
+It is:
+
+a constraint-based schedule generator
+
+If you get this right:
+	•	users don’t “build schedules”
+	•	the system builds a structurally valid life layout
+
+That’s a huge upgrade over typical apps.
+
+⸻
+
+If you want next, I can:
+	•	design the actual placement algorithm step-by-step
+	•	or help you visually debug layout collisions before coding

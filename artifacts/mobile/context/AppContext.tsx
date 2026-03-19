@@ -13,6 +13,7 @@ import type {
   NutritionPhaseId,
   QuantitativeDailyLog,
   ScheduleBlock,
+  ScheduleWizardConfig,
   TrainingLog,
   WeeklyRecommendation,
 } from "@/types";
@@ -50,6 +51,8 @@ interface AppContextType {
   quantitativeLogForDate: (date: string) => QuantitativeDailyLog | undefined;
   // Onboarding
   completeOnboarding: (phaseId: NutritionPhaseId) => void;
+  // Setup wizard
+  completeSetupWizard: (config: ScheduleWizardConfig, templates: BlockTemplate[]) => void;
   // Backup / restore — atomically replaces the entire app state
   importAppState: (newState: AppState) => void;
 }
@@ -320,6 +323,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [updateState]
   );
 
+  // ─── Setup Wizard ───────────────────────────────────────────────
+  // Stores wizard config and PREPENDS the generated templates.
+  // Any pre-existing user templates are preserved after the wizard templates.
+  const completeSetupWizard = useCallback(
+    (config: ScheduleWizardConfig, templates: BlockTemplate[]) => {
+      updateState((s) => {
+        const existingIds = new Set(templates.map((t) => t.id));
+        const kept = (s.blockTemplates ?? []).filter((t) => !existingIds.has(t.id));
+        return {
+          ...s,
+          scheduleConfig: config,
+          setupWizardComplete: true,
+          blockTemplates: [...templates, ...kept],
+        };
+      });
+    },
+    [updateState]
+  );
+
   // ─── Backup / restore ──────────────────────────────────────────
   // Atomically replaces the entire app state with an imported backup.
   // Derived fields (adherenceScore, pullScores, etc.) must already be
@@ -358,6 +380,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         upsertQuantitativeLog,
         quantitativeLogForDate,
         completeOnboarding,
+        completeSetupWizard,
         importAppState,
       }}
     >

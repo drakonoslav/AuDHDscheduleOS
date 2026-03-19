@@ -17,6 +17,7 @@ const DEFAULT_STATE: AppState = {
   blockTemplates: [],
   currentNutritionPhaseId: "base",
   onboardingComplete: false,
+  setupWizardComplete: false,
 };
 
 // ─── Seeded meal block templates ──────────────────────────────────────────────

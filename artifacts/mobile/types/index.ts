@@ -285,6 +285,36 @@ export interface QuantitativeDailyLog {
   hormoneQualCount?: number;        // xx.x
 }
 
+// ─── WIZARD SCHEDULE CONFIG ───────────────────────────────────────────────────
+// Stored snapshot of the user's setup-wizard answers.
+// Drives isSleepDisturbance checks and allows re-running the wizard.
+export interface ScheduleWizardConfig {
+  wakeTime: string;
+  bedTime: string;
+  mealCount: number;
+  hasCardio: boolean;
+  cardioPre: boolean;
+  cardioPost: boolean;
+  cardioMins: number;
+  cardioTime: "morning" | "afternoon" | "evening";
+  hasLift: boolean;
+  liftPre: boolean;
+  liftPost: boolean;
+  liftMins: number;
+  liftTime: "morning" | "afternoon" | "evening";
+  hasWork: boolean;
+  workDays: number[];
+  workStart: string;
+  workEnd: string;
+  hasCommute: boolean;
+  commuteMinutes: number;
+  showerCount: number;
+  weekdayMicroSize: 3 | 5 | 10 | 15 | 25 | 30;
+  weekdayMicroTypes: { type: BlockType; ratio: number }[];
+  weekendMicroSize: 3 | 5 | 10 | 15 | 25 | 30;
+  weekendMicroTypes: { type: BlockType; ratio: number }[];
+}
+
 // ─── APP STATE ────────────────────────────────────────────────────────────────
 export interface AppState {
   blocks: ScheduleBlock[];
@@ -295,4 +325,6 @@ export interface AppState {
   blockTemplates: BlockTemplate[];
   currentNutritionPhaseId: NutritionPhaseId;
   onboardingComplete: boolean;
+  setupWizardComplete: boolean;
+  scheduleConfig?: ScheduleWizardConfig;
 }
