@@ -1,14 +1,16 @@
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 
 import { Colors } from "@/constants/colors";
 
 const ITEM_H = 48;
 const VISIBLE = 5;
-const PAD = Math.floor(VISIBLE / 2);
+const PAD = Math.floor(VISIBLE / 2); // 2 spacer rows above and below the selected item
 
 // ─── DialPicker ───────────────────────────────────────────────────────────────
+
+type DialItem = { isVal: true; val: number } | { isVal: false; id: string };
 
 interface DialPickerProps {
   min: number;
@@ -20,46 +22,42 @@ interface DialPickerProps {
 }
 
 export function DialPicker({ min, max, value, onChange, label, padded = true }: DialPickerProps) {
-  const scrollRef = useRef<ScrollView>(null);
+  const listRef = useRef<FlatList>(null);
   const range = max - min + 1;
-  const items = useMemo(
-    () => Array.from({ length: range }, (_, i) => min + i),
-    [min, max]
-  );
 
-  const didMount = useRef(false);
-  // Track last committed value to avoid duplicate onChange calls and
-  // to skip external sync scrolls that we ourselves triggered.
+  // PAD null spacers + values + PAD null spacers.
+  // No contentContainerStyle padding needed — spacer items carry the visual offset.
+  // This lets initialScrollIndex work correctly: array index `value-min` puts the
+  // target value at the visual center (PAD rows below the top).
+  const data = useMemo((): DialItem[] => [
+    ...Array.from({ length: PAD }, (_, i): DialItem => ({ isVal: false, id: `s${i}` })),
+    ...Array.from({ length: range }, (_, i): DialItem => ({ isVal: true, val: min + i })),
+    ...Array.from({ length: PAD }, (_, i): DialItem => ({ isVal: false, id: `e${i}` })),
+  ], [min, max, range]);
+
+  // Prevent redundant external-sync scrolls for updates we caused ourselves.
   const committedValue = useRef(value);
 
-  const scrollToIdx = useCallback((idx: number, animated = false) => {
-    scrollRef.current?.scrollTo({ y: idx * ITEM_H, animated });
+  // Scroll the list so `valueIdx` (0-based from min) is centered.
+  // Because there are PAD spacer items at the start, valueIdx is the scroll offset
+  // in items: data[valueIdx] at the top → data[valueIdx+PAD] at center.
+  const scrollToIdx = useCallback((valueIdx: number, animated = false) => {
+    listRef.current?.scrollToOffset({ offset: valueIdx * ITEM_H, animated });
   }, []);
 
-  // Scroll to initial position after layout is ready.
-  const handleLayout = useCallback(() => {
-    if (didMount.current) return;
-    didMount.current = true;
-    setTimeout(() => scrollToIdx(value - min, false), 80);
-  }, [value, min, scrollToIdx]);
-
-  // If the parent changes value externally (form reset, etc.), sync the scroll.
+  // Sync when the parent changes value (e.g. form reset).
   useEffect(() => {
-    if (!didMount.current) return;
-    if (committedValue.current === value) return; // we caused this — skip
+    if (committedValue.current === value) return;
     committedValue.current = value;
     scrollToIdx(value - min, true);
   }, [value, min, scrollToIdx]);
 
-  // Core commit: round scroll offset → nearest item → snap + call onChange.
-  // The scrollTo(animated:true) call also overrides any in-flight CSS momentum
-  // on web, so the drum visually lands on the committed value.
+  // Round a raw scroll-Y to the nearest item, snap the list there, and fire onChange.
+  // The programmatic scrollToOffset also cancels any in-flight CSS momentum on web.
   const commitFromY = useCallback((y: number) => {
     const idx = Math.max(0, Math.min(range - 1, Math.round(y / ITEM_H)));
-    const newVal = min + idx;
-    // Always snap visually to the grid position (important on web where CSS
-    // snap may still be animating when this fires).
     scrollToIdx(idx, true);
+    const newVal = min + idx;
     if (newVal !== committedValue.current) {
       committedValue.current = newVal;
       try { Haptics.selectionAsync(); } catch (_) {}
@@ -67,19 +65,14 @@ export function DialPicker({ min, max, value, onChange, label, padded = true }: 
     }
   }, [min, range, onChange, scrollToIdx]);
 
-  // ── Web: commit on finger lift ──────────────────────────────────────────────
-  // onMomentumScrollEnd does NOT fire reliably in iOS Safari (web).
-  // onScrollEndDrag fires on touchend — we commit there and immediately
-  // programmatically snap the drum, overriding any remaining CSS momentum.
+  // Web (Safari): onMomentumScrollEnd is unreliable — commit on finger lift instead.
   const handleScrollEndDrag = useCallback((e: any) => {
     if (Platform.OS === "web") {
       commitFromY(e.nativeEvent.contentOffset.y);
     }
   }, [commitFromY]);
 
-  // ── Native: commit after snap settles ───────────────────────────────────────
-  // On iOS/Android, snapToInterval guarantees the list lands on an exact
-  // ITEM_H multiple; onMomentumScrollEnd fires when the animation finishes.
+  // Native: fires after snap animation — commit from the exact settled position.
   const handleMomentumScrollEnd = useCallback((e: any) => {
     commitFromY(e.nativeEvent.contentOffset.y);
   }, [commitFromY]);
@@ -88,32 +81,48 @@ export function DialPicker({ min, max, value, onChange, label, padded = true }: 
     <View style={dialStyles.dial}>
       <Text style={dialStyles.dialLabel}>{label}</Text>
       <View style={dialStyles.drum}>
-        <ScrollView
-          ref={scrollRef}
-          onLayout={handleLayout}
-          showsVerticalScrollIndicator={false}
+        <FlatList
+          ref={listRef}
+          data={data}
+          keyExtractor={(item) => item.isVal ? `v${item.val}` : item.id}
+          // getItemLayout is required for initialScrollIndex to work.
+          getItemLayout={(_, index) => ({ length: ITEM_H, offset: index * ITEM_H, index })}
+          // initialScrollIndex puts data[value-min] at the TOP, so data[value-min+PAD]
+          // (the actual value) ends up at the visual center.
+          initialScrollIndex={value - min}
           snapToInterval={ITEM_H}
           decelerationRate="fast"
+          showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
-          contentContainerStyle={{ paddingVertical: ITEM_H * PAD }}
+          // Render all items up front — ranges are small (≤60) so windowing is wasteful.
+          initialNumToRender={range + PAD * 2}
+          maxToRenderPerBatch={range + PAD * 2}
+          windowSize={range + PAD * 2}
           onScrollEndDrag={handleScrollEndDrag}
           onMomentumScrollEnd={handleMomentumScrollEnd}
-        >
-          {items.map((v) => (
-            <View key={v} style={dialStyles.item}>
-              <Text
-                style={[
-                  dialStyles.itemText,
-                  v === value && dialStyles.itemTextSelected,
-                  Math.abs(v - value) === 1 && dialStyles.itemTextNear,
-                ]}
-              >
-                {padded ? v.toString().padStart(2, "0") : v.toString()}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-        {/* Highlight overlay — sits on top of scroll content, passes touches through */}
+          renderItem={({ item }) => {
+            if (!item.isVal) {
+              return <View style={dialStyles.item} />;
+            }
+            const { val } = item;
+            const isSelected = val === value;
+            return (
+              <View style={dialStyles.item}>
+                <Text
+                  style={[
+                    dialStyles.itemText,
+                    isSelected && dialStyles.itemTextSelected,
+                    Math.abs(val - value) === 1 && dialStyles.itemTextNear,
+                  ]}
+                >
+                  {padded ? val.toString().padStart(2, "0") : val.toString()}
+                </Text>
+              </View>
+            );
+          }}
+          style={{ height: ITEM_H * VISIBLE }}
+        />
+        {/* Highlight overlay over the center row — pointerEvents:none passes touches through */}
         <View style={[dialStyles.highlight, { pointerEvents: "none" }]} />
       </View>
     </View>
@@ -157,15 +166,11 @@ export function TimeDials({ startTime, endTime, onStartChange, onEndChange }: Ti
         <View style={dialStyles.group}>
           <Text style={dialStyles.groupLabel}>START</Text>
           <View style={dialStyles.dialRow}>
-            <DialPicker
-              min={0} max={23} value={sH} label="HR"
-              onChange={(h) => onStartChange(toHHMM(h, sM))}
-            />
+            <DialPicker min={0} max={23} value={sH} label="HR"
+              onChange={(h) => onStartChange(toHHMM(h, sM))} />
             <Text style={dialStyles.colon}>:</Text>
-            <DialPicker
-              min={0} max={59} value={sM} label="MIN"
-              onChange={(m) => onStartChange(toHHMM(sH, m))}
-            />
+            <DialPicker min={0} max={59} value={sM} label="MIN"
+              onChange={(m) => onStartChange(toHHMM(sH, m))} />
           </View>
         </View>
 
@@ -175,15 +180,11 @@ export function TimeDials({ startTime, endTime, onStartChange, onEndChange }: Ti
         <View style={dialStyles.group}>
           <Text style={dialStyles.groupLabel}>END</Text>
           <View style={dialStyles.dialRow}>
-            <DialPicker
-              min={0} max={23} value={eH} label="HR"
-              onChange={(h) => onEndChange(toHHMM(h, eM))}
-            />
+            <DialPicker min={0} max={23} value={eH} label="HR"
+              onChange={(h) => onEndChange(toHHMM(h, eM))} />
             <Text style={dialStyles.colon}>:</Text>
-            <DialPicker
-              min={0} max={59} value={eM} label="MIN"
-              onChange={(m) => onEndChange(toHHMM(eH, m))}
-            />
+            <DialPicker min={0} max={59} value={eM} label="MIN"
+              onChange={(m) => onEndChange(toHHMM(eH, m))} />
           </View>
         </View>
       </View>
@@ -209,105 +210,47 @@ export function TimeDials({ startTime, endTime, onStartChange, onEndChange }: Ti
 
 const dialStyles = StyleSheet.create({
   container: { marginTop: 4 },
-  groupRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
+  groupRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   group: { alignItems: "center" },
   groupLabel: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 10,
-    color: Colors.light.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 4,
+    fontFamily: "Inter_600SemiBold", fontSize: 10, color: Colors.light.textMuted,
+    textTransform: "uppercase", letterSpacing: 1, marginBottom: 4,
   },
   dialRow: { flexDirection: "row", alignItems: "center", gap: 2 },
   colon: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 22,
-    color: Colors.light.text,
-    marginBottom: 4,
-    paddingHorizontal: 2,
+    fontFamily: "Inter_700Bold", fontSize: 22, color: Colors.light.text,
+    marginBottom: 4, paddingHorizontal: 2,
   },
   arrow: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 20,
-    color: Colors.light.textMuted,
-    marginTop: 22,
-    paddingHorizontal: 6,
+    fontFamily: "Inter_400Regular", fontSize: 20, color: Colors.light.textMuted,
+    marginTop: 22, paddingHorizontal: 6,
   },
   dial: { alignItems: "center", width: 64 },
   dialLabel: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 9,
-    color: Colors.light.textTertiary,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 4,
+    fontFamily: "Inter_500Medium", fontSize: 9, color: Colors.light.textTertiary,
+    textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4,
   },
   drum: {
-    height: ITEM_H * VISIBLE,
-    width: 64,
-    overflow: "hidden",
-    borderRadius: 10,
-    backgroundColor: Colors.light.surface,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    height: ITEM_H * VISIBLE, width: 64, overflow: "hidden",
+    borderRadius: 10, backgroundColor: Colors.light.surface,
+    borderWidth: 1, borderColor: Colors.light.border,
   },
   item: { height: ITEM_H, alignItems: "center", justifyContent: "center" },
-  itemText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 18,
-    color: Colors.light.textMuted,
-  },
-  itemTextNear: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 19,
-    color: Colors.light.textSecondary,
-  },
-  itemTextSelected: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 22,
-    color: Colors.light.text,
-  },
+  itemText: { fontFamily: "Inter_400Regular", fontSize: 18, color: Colors.light.textMuted },
+  itemTextNear: { fontFamily: "Inter_500Medium", fontSize: 19, color: Colors.light.textSecondary },
+  itemTextSelected: { fontFamily: "Inter_700Bold", fontSize: 22, color: Colors.light.text },
   highlight: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: ITEM_H * PAD,
-    height: ITEM_H,
+    position: "absolute", left: 0, right: 0,
+    top: ITEM_H * PAD, height: ITEM_H,
     backgroundColor: Colors.light.tint + "14",
-    borderTopWidth: 1.5,
-    borderBottomWidth: 1.5,
-    borderColor: Colors.light.tint + "55",
+    borderTopWidth: 1.5, borderBottomWidth: 1.5, borderColor: Colors.light.tint + "55",
   },
-  summary: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 10,
-  },
-  summaryTime: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: Colors.light.text,
-  },
+  summary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 },
+  summaryTime: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: Colors.light.text },
   summaryArrow: { color: Colors.light.textMuted, fontFamily: "Inter_400Regular" },
   durationPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 20,
-    backgroundColor: Colors.light.creamMid,
-    borderWidth: 1,
-    borderColor: Colors.light.borderLight,
+    paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20,
+    backgroundColor: Colors.light.creamMid, borderWidth: 1, borderColor: Colors.light.borderLight,
   },
-  durationText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    color: Colors.light.textSecondary,
-  },
+  durationText: { fontFamily: "Inter_500Medium", fontSize: 12, color: Colors.light.textSecondary },
 });

@@ -39,6 +39,16 @@ for (let v = WAIST_MIN; v <= 60.001; v += WAIST_STEP) {
 const ITEM_H = 44;
 const VISIBLE = 5;
 const PICKER_H = ITEM_H * VISIBLE;
+const WAIST_PAD = Math.floor(VISIBLE / 2); // 2 spacer rows
+
+// Padded data: PAD null spacers + values + PAD null spacers.
+// initialScrollIndex = selectedIndex centers the value without contentContainerStyle padding.
+type WaistItem = { isVal: true; val: number; idx: number } | { isVal: false; id: string };
+const WAIST_DATA: WaistItem[] = [
+  ...Array.from({ length: WAIST_PAD }, (_, i): WaistItem => ({ isVal: false, id: `s${i}` })),
+  ...WAIST_VALUES.map((val, idx): WaistItem => ({ isVal: true, val, idx })),
+  ...Array.from({ length: WAIST_PAD }, (_, i): WaistItem => ({ isVal: false, id: `e${i}` })),
+];
 
 // ─── HH:MM split entry ────────────────────────────────────────────────────────
 interface HMState { h: string; m: string }
@@ -147,39 +157,47 @@ const nf = StyleSheet.create({
 // ─── Waist drum picker ────────────────────────────────────────────────────────
 function WaistPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const listRef = useRef<FlatList>(null);
+  // selectedIndex: 0-based index into WAIST_VALUES (not into WAIST_DATA).
   const selectedIndex = useMemo(
     () => Math.round((value - WAIST_MIN) / WAIST_STEP),
     [value]
   );
   const committedValue = useRef(value);
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      listRef.current?.scrollToOffset({ offset: selectedIndex * ITEM_H, animated: false });
-    }, 80);
-    return () => clearTimeout(t);
+  // Scroll so that WAIST_VALUES[valueIdx] is centered.
+  // With WAIST_PAD spacers at the start, scrolling to offset = valueIdx * ITEM_H
+  // puts data[valueIdx] at the top → data[valueIdx + WAIST_PAD] (the actual value) at center.
+  const scrollToIdx = useCallback((valueIdx: number, animated = false) => {
+    listRef.current?.scrollToOffset({ offset: valueIdx * ITEM_H, animated });
   }, []);
+
+  // Sync when parent changes value externally.
+  useEffect(() => {
+    if (committedValue.current === value) return;
+    committedValue.current = value;
+    scrollToIdx(selectedIndex, true);
+  }, [value, selectedIndex, scrollToIdx]);
 
   const commitFromY = useCallback((y: number) => {
     const idx = Math.max(0, Math.min(WAIST_VALUES.length - 1, Math.round(y / ITEM_H)));
-    // Snap to grid position — overrides CSS momentum on web
-    listRef.current?.scrollToOffset({ offset: idx * ITEM_H, animated: true });
+    // Snap to grid (also cancels CSS momentum on web).
+    scrollToIdx(idx, true);
     const newVal = WAIST_VALUES[idx]!;
     if (newVal !== committedValue.current) {
       committedValue.current = newVal;
       try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
       onChange(newVal);
     }
-  }, [onChange]);
+  }, [onChange, scrollToIdx]);
 
-  // Web: onScrollEndDrag fires on finger lift (onMomentumScrollEnd is unreliable in Safari)
+  // Web: commit on finger lift — onMomentumScrollEnd is unreliable in Safari.
   const handleScrollEndDrag = useCallback((e: any) => {
     if (Platform.OS === "web") {
       commitFromY(e.nativeEvent.contentOffset.y);
     }
   }, [commitFromY]);
 
-  // Native: fires after snap animation completes — exact position guaranteed
+  // Native: fires after snap animation — exact position guaranteed.
   const handleMomentumScrollEnd = useCallback((e: any) => {
     commitFromY(e.nativeEvent.contentOffset.y);
   }, [commitFromY]);
@@ -189,20 +207,29 @@ function WaistPicker({ value, onChange }: { value: number; onChange: (v: number)
       <View style={[wp.highlight, { pointerEvents: "none" }]} />
       <FlatList
         ref={listRef}
-        data={WAIST_VALUES}
-        keyExtractor={(_, i) => i.toString()}
+        data={WAIST_DATA}
+        keyExtractor={(item) => item.isVal ? `v${item.idx}` : item.id}
         getItemLayout={(_, index) => ({ length: ITEM_H, offset: ITEM_H * index, index })}
+        // initialScrollIndex = selectedIndex: puts data[selectedIndex] at top →
+        // data[selectedIndex + WAIST_PAD] (the actual value) at the visual center.
+        initialScrollIndex={selectedIndex}
+        initialNumToRender={WAIST_VALUES.length + WAIST_PAD * 2}
+        maxToRenderPerBatch={WAIST_VALUES.length + WAIST_PAD * 2}
+        windowSize={WAIST_VALUES.length + WAIST_PAD * 2}
         snapToInterval={ITEM_H}
         decelerationRate="fast"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: ITEM_H * Math.floor(VISIBLE / 2) }}
+        scrollEventThrottle={16}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={handleMomentumScrollEnd}
-        renderItem={({ item, index }) => {
-          const isSel = index === selectedIndex;
+        renderItem={({ item }) => {
+          if (!item.isVal) {
+            return <View style={wp.item} />;
+          }
+          const isSel = item.idx === selectedIndex;
           return (
             <View style={[wp.item, isSel && wp.itemSel]}>
-              <Text style={[wp.text, isSel && wp.textSel]}>{item.toFixed(2)}"</Text>
+              <Text style={[wp.text, isSel && wp.textSel]}>{item.val.toFixed(2)}"</Text>
             </View>
           );
         }}
