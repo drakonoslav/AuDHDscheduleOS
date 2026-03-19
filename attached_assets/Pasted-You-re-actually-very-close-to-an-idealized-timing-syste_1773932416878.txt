@@ -1,0 +1,205 @@
+You’re actually very close to an idealized timing system already—your template just needs precise anchoring rules so your meals reinforce the physiology your orbital engine is trying to read.
+
+I’ll give you clean timing windows that align with:
+	•	glycogen dynamics
+	•	insulin sensitivity
+	•	GI comfort
+	•	training performance
+
+⸻
+
+🏃 Cardio Timing (especially Zone 2 like you’re doing)
+
+Pre-Cardio (banana in your template)
+
+Ideal:
+→ 0–15 minutes before
+
+Why:
+	•	You want light, fast glucose
+	•	Not enough time for digestion to slow you down
+	•	Supports liver glycogen + prevents cortisol spike
+
+Your current:
+	•	Banana = perfect
+	•	Timing = keep it tight (don’t eat 45+ min before)
+
+👉 Rule:
+
+Eat → start within ~10 minutes
+
+⸻
+
+Post-Cardio (oats + whey + MCT)
+
+Ideal:
+→ Immediately to 30 minutes after
+
+Why:
+	•	Insulin sensitivity is high
+	•	Glycogen uptake is efficient
+	•	You’re transitioning into the day (not a heavy anabolic window like lifting)
+
+Important nuance:
+	•	Cardio doesn’t require aggressive carb loading like lifting
+	•	Your combo is fine because:
+	•	oats = slower carb
+	•	whey = recovery signal
+	•	MCT = energy continuity
+
+👉 Rule:
+
+Within 0–30 min post-cardio is optimal
+
+⸻
+
+🏋️ Lifting Timing (this matters more)
+
+Pre-Lift (dextrin + whey)
+
+Ideal:
+→ 30–60 minutes before
+
+Why:
+	•	You want:
+	•	glucose availability
+	•	amino acids circulating
+	•	But NOT:
+	•	food sitting in stomach during sets
+
+Your setup is excellent:
+	•	dextrin = fast carb
+	•	whey = fast protein
+
+👉 Sweet spot:
+
+~45 minutes pre-lift
+
+⸻
+
+Post-Lift (dextrin + whey)
+
+Ideal:
+→ 0–30 minutes after (sooner is better)
+
+Why:
+	•	This is your highest priority window of the day
+	•	You’re in:
+	•	high insulin sensitivity
+	•	high GLUT4 activity
+	•	high anabolic signaling
+
+Your template is perfect here
+
+👉 Rule:
+
+Within 15 minutes if possible
+
+⸻
+
+🍽️ Midday / Evening Meals (non-training)
+
+Mid-morning (flax + whey + yogurt)
+
+Ideal spacing:
+→ 2–4 hours after post-cardio
+
+Evening meal (large mixed meal)
+
+Ideal:
+→ 2–3 hours before bed
+
+Why:
+	•	Enough time to digest
+	•	Doesn’t disrupt sleep
+	•	Still provides overnight substrate
+
+⸻
+
+Protein reserve (before bed)
+
+If used:
+
+→ 0–60 minutes before sleep
+	•	keeps amino acids available overnight
+	•	supports recovery / androgen profile
+
+⸻
+
+⚖️ Your Full Day (based on your system)
+
+Here’s how it should feel structurally:
+
+Wake
+↓ (0–10 min)
+Pre-cardio (banana)
+↓
+Cardio
+↓ (0–30 min)
+Post-cardio meal
+↓ (2–4 hrs)
+Mid-morning
+↓ (2–4 hrs)
+Pre-lift (~45 min before)
+↓
+Lift
+↓ (0–30 min)
+Post-lift
+↓ (2–3 hrs)
+Evening meal
+↓ (optional)
+Protein reserve (before bed)
+↓
+Sleep
+
+
+⸻
+
+🧠 Key Insight (this ties into your system)
+
+Your meals are not just nutrition—they are:
+
+anchors that reinforce your orbital phase
+
+	•	Pre/Post Lift → Loading / Saturation support
+	•	Stable spacing → Expression / Partitioning support
+	•	Tight pre-cardio → Priming stability
+
+If timing drifts:
+	•	your engine will detect mismatch
+	•	but the root cause may just be meal timing, not physiology
+
+⸻
+
+🔧 One refinement I’d suggest
+
+Your current system is strong, but you could improve:
+
+Add timing validation rules in app:
+	•	Pre-lift:
+	•	flag if <20 min or >90 min
+	•	Post-lift:
+	•	flag if >45 min delay
+	•	Pre-cardio:
+	•	flag if >30 min before
+
+This will tighten your data → improve your engine accuracy.
+
+⸻
+
+🧾 Bottom line
+	•	Cardio
+	•	pre: 0–15 min
+	•	post: 0–30 min
+	•	Lift
+	•	pre: 30–60 min (best ~45)
+	•	post: 0–30 min (best ASAP)
+	•	Everything else
+	•	spaced 2–4 hrs
+	•	evening 2–3 hrs before bed
+
+⸻
+
+If you want next, I can:
+	•	integrate this directly into your Replit meal template logic
+	•	or build auto-timing validation rules tied to your dataset schema

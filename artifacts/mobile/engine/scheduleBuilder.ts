@@ -14,8 +14,10 @@
  *  7. Evening / afternoon workout(s)
  *  8. Shower after evening workout
  *  9. Bedtime
- * 10. Meals — training-anchored first, then flexible gap-filling
- *     Protein Reserve: largest daytime gap → work-window gap → pre-bed fallback
+ * 10. Meals — fixed anchors first, then flexible gap-filling
+ *     Fixed anchors: Pre Cardio (0 min gap), Post Cardio (+5 min), Pre Lift (-45 min),
+ *                    Post Lift (+5 min), Evening (2.5 hr before bed)
+ *     Protein Reserve: largest daytime gap (≥150 min) → work-window gap → largest gap
  *     MAX_GAP = 180 min. Flexible meals placed at 40% into the largest open gap.
  *     Meals are allowed inside work blocks.
  * 11. Micro-blocks (greedy void fill, ratio-weighted)
@@ -197,7 +199,9 @@ function largestGap(gaps: MealGap[]): MealGap | undefined {
 
 // ─── Anchored meal placement ──────────────────────────────────────────────────
 
-const TRAINING_NAMES = new Set(["Pre Cardio", "Post Cardio", "Pre Lift", "Post Lift"]);
+// Evening is included here so that when it appears in the meal list it is
+// anchored to 2–3 hours before bed (not left to open gap-filling).
+const TRAINING_NAMES = new Set(["Pre Cardio", "Post Cardio", "Pre Lift", "Post Lift", "Evening"]);
 
 function phaseFor(name: string): SchedulePhaseTag {
   if (name === "Post Cardio" || name === "Post Lift" || name === "Protein Reserve") return "recovery";
@@ -228,6 +232,12 @@ function tryAnchoredMeal(name: string, w: WorkoutPositions, wakeEnd: number, bed
       start = w.liftEnd + POST_WORKOUT_DELAY;
       end   = start + 10;
       break;
+    case "Evening":
+      // Anchored 2.5 hours before bed (sweet spot of the 2–3 hr window).
+      // Falls back to flexible if the resulting slot is before wakeEnd.
+      end   = bedStart - 150;
+      start = end - 10;
+      break;
     default:
       return null;
   }
@@ -238,9 +248,15 @@ function tryAnchoredMeal(name: string, w: WorkoutPositions, wakeEnd: number, bed
 
 // ─── Core meal placer ────────────────────────────────────────────────────────
 //
-// Phase 1: Place training-anchored meals at workout-relative positions.
+// Phase 1: Place fixed-anchor meals at their physiologically correct positions.
+//          Pre Cardio: ends at cardioStart (0-min gap → eat then immediately start)
+//          Post Cardio: starts cardioEnd+5  (within 0–30 min window)
+//          Pre Lift:    ends liftStart-45   (sweet spot of 30–60 min window)
+//          Post Lift:   starts liftEnd+5    (within 0–30 min window, sooner = better)
+//          Evening:     ends bedStart-150   (2.5 hr before bed; sweet spot of 2–3 hr window)
+//          Any anchor that falls outside the wake→bed window falls back to flexible.
 // Phase 2: Place flexible meals (Protein Reserve priority) into largest gaps.
-//          Protein Reserve: largest daytime gap → work-window gap → pre-bed fallback.
+//          Protein Reserve: largest daytime gap (≥IDEAL_GAP) → work-window gap → largest gap.
 // Phase 3: Enforce MAX_GAP — if any gap still > MAX_GAP, shift the nearest
 //          flexible meal to the 40% point of that gap.
 // Meals are allowed inside work blocks (no restriction applied here).

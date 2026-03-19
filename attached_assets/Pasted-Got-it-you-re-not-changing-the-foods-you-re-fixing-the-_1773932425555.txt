@@ -1,0 +1,240 @@
+Got it — you’re not changing the foods, you’re fixing the temporal architecture so the schedule doesn’t have dead zones and the protein reserve can flex into the work window.
+
+Here’s a clean rewritten timing spec you can give to Replit (or use yourself) that preserves your logic but fixes spacing + flow.
+
+⸻
+
+🔧 Revised Meal Timing System (with flow + gap correction)
+
+Core principle
+
+Meals are not just evenly spaced — they are:
+
+anchored to training + then backfilled to eliminate large void gaps
+
+⸻
+
+1. Fixed Anchors (do NOT move)
+
+These remain strict:
+
+Pre-Cardio
+	•	0–10 min before cardio
+
+Post-Cardio
+	•	0–30 min after cardio
+
+Pre-Lift
+	•	30–60 min before lift (target ~45 min)
+
+Post-Lift
+	•	0–30 min after lift
+
+Last Meal (Evening)
+	•	Ends ~2–3 hours before bedtime
+
+⸻
+
+2. Dynamic Meal Redistribution (NEW — critical fix)
+
+Problem you identified:
+
+Large empty gaps between meals due to cardio/lift anchoring
+
+Solution:
+
+Instead of rigid slot positions, introduce:
+
+Adaptive spacing with gap compression
+
+⸻
+
+Step 1 — Identify gaps
+
+After placing:
+	•	wake
+	•	cardio meals
+	•	lift meals
+	•	evening meal
+
+Compute all gaps:
+
+gap = time_between(end_of_meal_A → start_of_meal_B)
+
+
+⸻
+
+Step 2 — Define max gap threshold
+
+MAX_GAP = 3 hours (hard cap)
+IDEAL_GAP = 2–2.5 hours
+
+
+⸻
+
+Step 3 — Fill oversized gaps
+
+If:
+
+gap > MAX_GAP
+
+Then:
+	•	insert a floating meal (mid-morning or protein reserve)
+	•	place it at:
+
+midpoint of gap OR slightly biased earlier (60/40 split)
+
+
+⸻
+
+3. Protein Reserve — now a FLEX MEAL
+
+This is your key change.
+
+Old behavior:
+	•	Always near bedtime
+
+New behavior:
+
+Protein Reserve becomes a “gap stabilizer”
+
+⸻
+
+Placement logic:
+
+Priority order:
+	1.	Largest daytime gap first
+	2.	If no large gap:
+→ place pre-bed (optional)
+	3.	If work window has long gap:
+→ insert INSIDE work period
+
+⸻
+
+Example rule:
+
+IF gap > 3h during work hours:
+    place protein_reserve inside work block
+
+
+⸻
+
+Practical effect:
+	•	prevents long catabolic windows
+	•	smooths energy + amino availability
+	•	keeps schedule dense and usable
+
+⸻
+
+4. Workday Integration (important addition)
+
+Meals are allowed to:
+
+exist inside work blocks
+
+They should:
+	•	be short (5–10 min)
+	•	not break structure
+	•	act as maintenance pulses, not full meals
+
+⸻
+
+5. Final Placement Order (updated)
+
+This is what Replit must follow:
+
+1. Wake / Bed anchors
+2. Cardio (if exists)
+3. Pre/Post Cardio meals
+4. Work + commute
+5. Lift (if exists)
+6. Pre/Post Lift meals
+7. Evening meal (anchored near bedtime)
+8. Compute gaps
+9. Insert mid-meal + protein reserve into largest gaps
+10. Ensure no gap > MAX_GAP
+
+
+⸻
+
+6. Resulting Behavior (what you actually want)
+
+Instead of this (current issue):
+
+[Meal] —— 4+ hr void —— [Meal]
+
+You now get:
+
+[Meal] — 2h — [Protein Reserve] — 2h — [Meal]
+
+
+⸻
+
+🧠 Why this is the correct evolution
+
+This aligns your system with:
+	•	Partitioning / Expression states
+→ stable nutrient availability
+	•	Loading / Saturation states
+→ dense feeding around training
+	•	Real life constraints
+→ meals inside work are allowed
+
+⸻
+
+🧾 Clean version to send to Replit
+
+We need to refine meal placement to eliminate large gaps and allow protein reserve to act as a dynamic stabilizer.
+
+Add the following logic:
+
+1) Keep all training anchors fixed:
+- Pre-cardio: 0–10 min before
+- Post-cardio: 0–30 min after
+- Pre-lift: 30–60 min before
+- Post-lift: 0–30 min after
+
+2) After placing all anchored meals, compute all time gaps between meals.
+
+3) Define:
+- MAX_GAP = 3 hours
+- IDEAL_GAP = ~2–2.5 hours
+
+4) If any gap exceeds MAX_GAP:
+- Insert a meal (mid-morning or protein reserve) into that gap
+- Place at midpoint or slightly earlier (60/40 split)
+
+5) Protein reserve is no longer fixed before bed.
+It becomes a flexible meal:
+- First priority: fill largest daytime gap
+- Second priority: fill gap inside work window if present
+- Only falls back to pre-bed if no gaps exist
+
+6) Meals are allowed inside work blocks (short duration)
+
+7) Final constraint:
+No gap between meals should exceed MAX_GAP
+
+
+⸻
+
+🔥 Bottom line
+
+You just upgraded your system from:
+
+even spacing
+
+to:
+
+constraint-based nutrient flow
+
+That’s a big leap — and it will make:
+	•	your energy more stable
+	•	your logs cleaner
+	•	your orbital inference more accurate
+
+⸻
+
+If you want next, I can:
+	•	simulate a full day schedule with your exact times
+	•	or convert this into actual TypeScript placement logic for Replit
