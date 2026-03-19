@@ -121,8 +121,13 @@ export default function BackupScreen() {
       const json = JSON.stringify(payload, null, 2);
       const filename = `audhd-backup-${todayStr()}.json`;
 
-      // ── Strategy 1: Native file share via expo-file-system + expo-sharing
-      //    (Expo Go on iOS/Android — writes a real .json file then shares it)
+      const markSuccess = () => {
+        try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
+        setExportSuccess({ exportedAt: payload._meta.exportedAt, counts: getBackupSummary(payload).counts });
+      };
+
+      // ── Strategy 1 (native only): expo-file-system + expo-sharing
+      //    Writes a real .json file then opens the native share sheet.
       if (Platform.OS !== "web") {
         try {
           const { writeAsStringAsync, cacheDirectory } = await import("expo-file-system");
@@ -135,8 +140,7 @@ export default function BackupScreen() {
               dialogTitle: "Save backup file",
               UTI: "public.json",
             });
-            try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
-            setExportSuccess({ exportedAt: payload._meta.exportedAt, counts: getBackupSummary(payload).counts });
+            markSuccess();
             return;
           }
         } catch (_) {
@@ -144,27 +148,58 @@ export default function BackupScreen() {
         }
       }
 
-      // ── Strategy 2: React Native Share (cross-platform, works in web build)
-      //    On iOS Safari this opens the native share sheet (Notes, AirDrop, etc.)
+      // ── Strategy 2 (web): navigator.share with a real File object
+      //    Works on iOS Safari 15+ PWA — opens the share sheet with the actual .json file.
+      if (Platform.OS === "web") {
+        try {
+          const blob = new Blob([json], { type: "application/json" });
+          const file = new File([blob], filename, { type: "application/json" });
+          const nav = navigator as any;
+          if (typeof nav.canShare === "function" && nav.canShare({ files: [file] })) {
+            await nav.share({ files: [file], title: filename });
+            markSuccess();
+            return;
+          }
+        } catch (_) {
+          // navigator.share not available or user cancelled — fall through
+        }
+
+        // ── Strategy 3 (web fallback): anchor element download
+        //    Works in desktop browsers (Chrome, Edge, Firefox).
+        try {
+          const blob = new Blob([json], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement("a");
+          anchor.href = url;
+          anchor.download = filename;
+          document.body.appendChild(anchor);
+          anchor.click();
+          setTimeout(() => {
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+          }, 150);
+          markSuccess();
+          return;
+        } catch (_) {
+          // DOM APIs unavailable — fall through to modal
+        }
+      }
+
+      // ── Strategy 4: React Native Share (text content fallback)
+      //    Last resort before the modal — shares the raw JSON string.
       try {
         const result = await Share.share({ message: json, title: filename });
         if (result.action !== "dismissedAction") {
-          try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
-          setExportSuccess({ exportedAt: payload._meta.exportedAt, counts: getBackupSummary(payload).counts });
+          markSuccess();
           return;
         }
-        // User dismissed the share sheet — still show success since data is intact
-        setExportSuccess({ exportedAt: payload._meta.exportedAt, counts: getBackupSummary(payload).counts });
-        return;
-      } catch (_shareErr) {
+      } catch (_) {
         // Share not available — fall through to modal
       }
 
-      // ── Strategy 3: JSON viewer modal
-      //    Show the raw JSON in a selectable text area so the user can copy it.
+      // ── Strategy 5: JSON viewer modal — always works, user copies manually.
       setJsonModal({ visible: true, json });
-      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
-      setExportSuccess({ exportedAt: payload._meta.exportedAt, counts: getBackupSummary(payload).counts });
+      markSuccess();
     } catch (e) {
       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch (_) {}
       Alert.alert("Export failed", String(e));
