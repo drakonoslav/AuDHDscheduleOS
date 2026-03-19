@@ -324,13 +324,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ─── Setup Wizard ───────────────────────────────────────────────
-  // Stores wizard config and PREPENDS the generated templates.
-  // Any pre-existing user templates are preserved after the wizard templates.
+  // Replaces all seed templates (meal_seed_*) and any previously wizard-generated
+  // templates (wizard_*) with the new set. User-created templates (any other ID
+  // prefix) are preserved after the wizard templates.
   const completeSetupWizard = useCallback(
     (config: ScheduleWizardConfig, templates: BlockTemplate[]) => {
       updateState((s) => {
-        const existingIds = new Set(templates.map((t) => t.id));
-        const kept = (s.blockTemplates ?? []).filter((t) => !existingIds.has(t.id));
+        const kept = (s.blockTemplates ?? []).filter(
+          (t) => !t.id.startsWith("meal_seed_") && !t.id.startsWith("wizard_"),
+        );
         return {
           ...s,
           scheduleConfig: config,

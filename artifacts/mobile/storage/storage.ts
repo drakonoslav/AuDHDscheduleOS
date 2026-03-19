@@ -6,6 +6,7 @@ export type { QuantitativeDailyLog };
 const KEYS = {
   APP_STATE: "@audhd_os_state_v1",
   MEAL_SEED: "@audhd_os_meal_seed_v1",
+  DEDUP_MIGRATION: "@audhd_os_dedup_v1",
 };
 
 const DEFAULT_STATE: AppState = {
@@ -91,9 +92,10 @@ const MEAL_SEED_TEMPLATES: BlockTemplate[] = [
 
 export async function loadAppState(): Promise<AppState> {
   try {
-    const [raw, seeded] = await Promise.all([
+    const [raw, seeded, deduped] = await Promise.all([
       AsyncStorage.getItem(KEYS.APP_STATE),
       AsyncStorage.getItem(KEYS.MEAL_SEED),
+      AsyncStorage.getItem(KEYS.DEDUP_MIGRATION),
     ]);
 
     const base: AppState = raw
@@ -109,6 +111,21 @@ export async function loadAppState(): Promise<AppState> {
         base.blockTemplates = [...toAdd, ...base.blockTemplates];
       }
       await AsyncStorage.setItem(KEYS.MEAL_SEED, "1");
+    }
+
+    // One-time migration: remove seed meal templates that duplicated wizard
+    // templates when the setup wizard was completed. Any device that ran the
+    // wizard before this fix landed will have both meal_seed_* and wizard_*
+    // templates — this clears the stale seed entries exactly once.
+    if (!deduped) {
+      const before = base.blockTemplates.length;
+      base.blockTemplates = base.blockTemplates.filter(
+        (t) => !t.id.startsWith("meal_seed_"),
+      );
+      if (base.blockTemplates.length !== before) {
+        await saveAppState(base);
+      }
+      await AsyncStorage.setItem(KEYS.DEDUP_MIGRATION, "1");
     }
 
     return base;
