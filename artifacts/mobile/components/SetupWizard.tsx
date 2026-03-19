@@ -117,17 +117,19 @@ function Stepper({
   value,
   min,
   max,
+  step = 1,
   onChange,
   format,
 }: {
   value: number;
   min: number;
   max: number;
+  step?: number;
   onChange: (v: number) => void;
   format?: (v: number) => string;
 }) {
-  const dec = () => onChange(Math.max(min, value - 1));
-  const inc = () => onChange(Math.min(max, value + 1));
+  const dec = () => onChange(Math.max(min, value - step));
+  const inc = () => onChange(Math.min(max, value + step));
   return (
     <View style={prim.stepper}>
       <Pressable style={prim.stepBtn} onPress={dec} disabled={value <= min}>
@@ -159,7 +161,7 @@ function TimePicker({
     <View style={prim.timePicker}>
       <Stepper value={h} min={0} max={23} onChange={setH} format={(v) => v.toString().padStart(2, "0")} />
       <Text style={prim.timeSep}>:</Text>
-      <Stepper value={m} min={0} max={59} onChange={(v) => setM(Math.round(v / 5) * 5 > 59 ? 55 : Math.round(v / 5) * 5)} format={(v) => v.toString().padStart(2, "0")} />
+      <Stepper value={m} min={0} max={55} step={5} onChange={setM} format={(v) => v.toString().padStart(2, "0")} />
     </View>
   );
 }
