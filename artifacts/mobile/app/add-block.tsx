@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PhaseAxes, PhaseClassifier, derivePhaseTag } from "@/components/ui/PhaseClassifier";
+import { TimeDials } from "@/components/ui/TimeDials";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import type { BlockType } from "@/types";
@@ -125,7 +126,7 @@ export default function AddBlockScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 24 }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.fieldLabel}>Name</Text>
@@ -136,6 +137,7 @@ export default function AddBlockScreen() {
           placeholder="e.g. Deep Work, Lunch, Cardio"
           placeholderTextColor={Colors.light.textMuted}
           autoFocus
+          returnKeyType="done"
         />
 
         <Text style={styles.fieldLabel}>Block Type</Text>
@@ -159,30 +161,13 @@ export default function AddBlockScreen() {
           onChange={(axes) => setForm((f) => ({ ...f, axes }))}
         />
 
-        <View style={styles.timeRow}>
-          <View style={styles.timeField}>
-            <Text style={styles.fieldLabel}>Planned Start</Text>
-            <TextInput
-              style={styles.textInput}
-              value={form.plannedStart}
-              onChangeText={(t) => setForm((f) => ({ ...f, plannedStart: t }))}
-              placeholder="HH:MM"
-              placeholderTextColor={Colors.light.textMuted}
-              keyboardType="numbers-and-punctuation"
-            />
-          </View>
-          <View style={styles.timeField}>
-            <Text style={styles.fieldLabel}>Planned End</Text>
-            <TextInput
-              style={styles.textInput}
-              value={form.plannedEnd}
-              onChangeText={(t) => setForm((f) => ({ ...f, plannedEnd: t }))}
-              placeholder="HH:MM"
-              placeholderTextColor={Colors.light.textMuted}
-              keyboardType="numbers-and-punctuation"
-            />
-          </View>
-        </View>
+        <Text style={styles.fieldLabel}>Timing</Text>
+        <TimeDials
+          startTime={form.plannedStart}
+          endTime={form.plannedEnd}
+          onStartChange={(t) => setForm((f) => ({ ...f, plannedStart: t }))}
+          onEndChange={(t) => setForm((f) => ({ ...f, plannedEnd: t }))}
+        />
 
         {overlapWarnings.length > 0 && (
           <View style={[styles.overlapWarn, hasHardOverlap && styles.overlapWarnHard]}>
@@ -226,14 +211,23 @@ export default function AddBlockScreen() {
           multiline
           numberOfLines={3}
         />
+      </ScrollView>
 
+      {/* Fixed footer — always visible, never covered by keyboard */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
+        >
+          <Text style={styles.cancelBtnText}>Cancel</Text>
+        </Pressable>
         <Pressable
           onPress={handleAdd}
           style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
         >
           <Text style={styles.addBtnText}>Add Block</Text>
         </Pressable>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -291,8 +285,6 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   chipTextSelected: { color: Colors.light.surface },
-  timeRow: { flexDirection: "row", gap: 12 },
-  timeField: { flex: 1 },
   overlapWarn: {
     flexDirection: "row",
     gap: 8,
@@ -321,12 +313,34 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
     lineHeight: 16,
   },
+  footer: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: "center",
+  },
+  cancelBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: Colors.light.textSecondary,
+  },
   addBtn: {
+    flex: 2,
     backgroundColor: Colors.light.tint,
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: "center",
-    marginTop: 24,
   },
   addBtnText: { fontFamily: "Inter_700Bold", fontSize: 16, color: Colors.light.surface },
 });

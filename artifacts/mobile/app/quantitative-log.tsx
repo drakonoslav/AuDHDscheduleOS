@@ -168,7 +168,7 @@ function WaistPicker({ value, onChange }: { value: number; onChange: (v: number)
 
   return (
     <View style={wp.container}>
-      <View style={wp.highlight} pointerEvents="none" />
+      <View style={[wp.highlight, { pointerEvents: "none" }]} />
       <FlatList
         ref={listRef}
         data={WAIST_VALUES}

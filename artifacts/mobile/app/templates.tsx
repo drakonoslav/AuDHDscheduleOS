@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PhaseAxes, PhaseClassifier, derivePhaseTag } from "@/components/ui/PhaseClassifier";
 import { PhaseTag } from "@/components/ui/PhaseTag";
+import { TimeDials } from "@/components/ui/TimeDials";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import type { BlockTemplate, BlockType, SchedulePhaseTag } from "@/types";
@@ -161,7 +162,7 @@ export default function TemplatesScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: 24 }]}
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.fieldLabel}>Name</Text>
@@ -172,6 +173,7 @@ export default function TemplatesScreen() {
             placeholder="e.g. Morning Cardio, Deep Work"
             placeholderTextColor={Colors.light.textMuted}
             autoFocus
+            returnKeyType="done"
           />
 
           <Text style={styles.fieldLabel}>Block Type</Text>
@@ -195,30 +197,13 @@ export default function TemplatesScreen() {
             onChange={(axes) => setForm((f) => ({ ...f, axes }))}
           />
 
-          <View style={styles.timeRow}>
-            <View style={styles.timeField}>
-              <Text style={styles.fieldLabel}>Start Time</Text>
-              <TextInput
-                style={styles.textInput}
-                value={form.startTime}
-                onChangeText={(t) => setForm((f) => ({ ...f, startTime: t }))}
-                placeholder="HH:MM"
-                placeholderTextColor={Colors.light.textMuted}
-                keyboardType="numbers-and-punctuation"
-              />
-            </View>
-            <View style={styles.timeField}>
-              <Text style={styles.fieldLabel}>End Time</Text>
-              <TextInput
-                style={styles.textInput}
-                value={form.endTime}
-                onChangeText={(t) => setForm((f) => ({ ...f, endTime: t }))}
-                placeholder="HH:MM"
-                placeholderTextColor={Colors.light.textMuted}
-                keyboardType="numbers-and-punctuation"
-              />
-            </View>
-          </View>
+          <Text style={styles.fieldLabel}>Timing</Text>
+          <TimeDials
+            startTime={form.startTime}
+            endTime={form.endTime}
+            onStartChange={(t) => setForm((f) => ({ ...f, startTime: t }))}
+            onEndChange={(t) => setForm((f) => ({ ...f, endTime: t }))}
+          />
 
           <Text style={styles.fieldLabel}>Repeats on</Text>
           <View style={styles.daysRow}>
@@ -245,14 +230,23 @@ export default function TemplatesScreen() {
             multiline
             numberOfLines={3}
           />
+        </ScrollView>
 
+        {/* Fixed footer — always visible, no keyboard occlusion for time dials */}
+        <View style={[styles.formFooter, { paddingBottom: insets.bottom + 12 }]}>
+          <Pressable
+            onPress={() => setMode("list")}
+            style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </Pressable>
           <Pressable
             onPress={handleSave}
             style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.85 }]}
           >
             <Text style={styles.saveBtnText}>{editingId ? "Save Changes" : "Create Template"}</Text>
           </Pressable>
-        </ScrollView>
+        </View>
       </View>
     );
   }
@@ -449,10 +443,33 @@ const styles = StyleSheet.create({
   dayChipSelected: { backgroundColor: Colors.light.navyDark, borderColor: Colors.light.navyDark },
   dayChipText: { fontFamily: "Inter_500Medium", fontSize: 13, color: Colors.light.textSecondary },
   dayChipTextSelected: { color: Colors.light.surface },
+  formFooter: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    alignItems: "center",
+  },
+  cancelBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: Colors.light.textSecondary,
+  },
   saveBtn: {
+    flex: 2,
     backgroundColor: Colors.light.tint,
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: "center",
   },
   saveBtnText: { fontFamily: "Inter_700Bold", fontSize: 16, color: Colors.light.surface },
