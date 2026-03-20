@@ -68,15 +68,22 @@ export type SignalKey =
   | "noveltyHunger"
   | "structureHunger"
   | "sensoryLoadBaseline"
+  | "pressureSeek"
+  | "socialLoad"
+  | "noiseAversion"
+  | "lightAversion"
+  | "textureSensitivity"
   | "remMin"
   | "coreMin"
   | "awakeMin"
   | "weightLbs"
   | "bodyFatPct"
+  | "skeletalMusclePct"
   | "fatFreeMassLbs"
   | "waistIn"
   | "hormoneDurationMin"
-  | "hormoneQuantCount";
+  | "hormoneQuantCount"
+  | "hormoneQualCount";
 
 export interface TrendPoint {
   date: string;
@@ -192,35 +199,43 @@ export const ALL_SIGNAL_DEFS: {
   higherIsWorse: boolean;
   group: "qualitative" | "sleep" | "vitals" | "body" | "hormone";
 }[] = [
-  // Qualitative
-  { key: "physicalEnergy",    label: "Physical Energy",   unit: "/5",  higherIsWorse: false, group: "qualitative" },
-  { key: "motivation",        label: "Motivation",        unit: "/5",  higherIsWorse: false, group: "qualitative" },
-  { key: "mentalFog",         label: "Mental Fog",        unit: "/5",  higherIsWorse: true,  group: "qualitative" },
-  { key: "emotionalStability",label: "Emotional Stability",unit:"/5", higherIsWorse: false, group: "qualitative" },
-  { key: "sleepHours",        label: "Sleep Duration",    unit: "h",   higherIsWorse: false, group: "qualitative" },
-  { key: "sleepQuality",      label: "Sleep Quality",     unit: "/5",  higherIsWorse: false, group: "qualitative" },
-  { key: "noveltyHunger",     label: "Novelty Hunger",    unit: "/5",  higherIsWorse: false, group: "qualitative" },
-  { key: "structureHunger",   label: "Structure Hunger",  unit: "/5",  higherIsWorse: false, group: "qualitative" },
-  { key: "sensoryLoadBaseline",label:"Sensory Load",      unit: "/5",  higherIsWorse: true,  group: "qualitative" },
-  { key: "recoveryNeedScore", label: "Recovery Need",     unit: "/5",  higherIsWorse: true,  group: "qualitative" },
-  { key: "adhdPullScore",     label: "ADHD Pull",         unit: "/5",  higherIsWorse: false, group: "qualitative" },
-  { key: "autismPullScore",   label: "Autism Pull",       unit: "/5",  higherIsWorse: false, group: "qualitative" },
-  // Sleep stages
-  { key: "awakeMin",          label: "Awake",             unit: "min", higherIsWorse: true,  group: "sleep" },
-  { key: "remMin",            label: "REM",               unit: "min", higherIsWorse: false, group: "sleep" },
-  { key: "coreMin",           label: "Core Sleep",        unit: "min", higherIsWorse: false, group: "sleep" },
-  { key: "deepMin",           label: "Deep Sleep",        unit: "min", higherIsWorse: false, group: "sleep" },
-  // Vitals
-  { key: "hrv",               label: "HRV",               unit: "ms",  higherIsWorse: false, group: "vitals" },
-  { key: "rhr",               label: "Resting HR",        unit: "bpm", higherIsWorse: true,  group: "vitals" },
-  // Body composition
-  { key: "weightLbs",         label: "Body Weight",       unit: "lbs", higherIsWorse: false, group: "body" },
-  { key: "bodyFatPct",        label: "Body Fat",          unit: "%",   higherIsWorse: false, group: "body" },
-  { key: "fatFreeMassLbs",    label: "Fat-Free Mass",     unit: "lbs", higherIsWorse: false, group: "body" },
-  { key: "waistIn",           label: "Waist",             unit: "in",  higherIsWorse: false, group: "body" },
-  // Hormone
-  { key: "hormoneDurationMin",label: "Hormone Duration",  unit: "min", higherIsWorse: false, group: "hormone" },
-  { key: "hormoneQuantCount", label: "Hormone Count",     unit: "",    higherIsWorse: false, group: "hormone" },
+  // ── Qualitative raw scores
+  { key: "sleepHours",         label: "Sleep Duration",     unit: "h",   higherIsWorse: false, group: "qualitative" },
+  { key: "sleepQuality",       label: "Sleep Quality",      unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "physicalEnergy",     label: "Physical Energy",    unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "motivation",         label: "Motivation",         unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "mentalFog",          label: "Mental Fog",         unit: "/5",  higherIsWorse: true,  group: "qualitative" },
+  { key: "emotionalStability", label: "Emotional Stability",unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "noveltyHunger",      label: "Novelty Hunger",     unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "structureHunger",    label: "Structure Hunger",   unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "pressureSeek",       label: "Pressure Seeking",   unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "sensoryLoadBaseline",label: "Sensory Load",       unit: "/5",  higherIsWorse: true,  group: "qualitative" },
+  { key: "socialLoad",         label: "Social Load",        unit: "/5",  higherIsWorse: true,  group: "qualitative" },
+  { key: "noiseAversion",      label: "Noise Aversion",     unit: "/5",  higherIsWorse: true,  group: "qualitative" },
+  { key: "lightAversion",      label: "Light Aversion",     unit: "/5",  higherIsWorse: true,  group: "qualitative" },
+  { key: "textureSensitivity", label: "Texture Sensitivity",unit: "/5",  higherIsWorse: true,  group: "qualitative" },
+  // ── Qualitative composite (derived)
+  { key: "recoveryNeedScore",  label: "Recovery Need",      unit: "/5",  higherIsWorse: true,  group: "qualitative" },
+  { key: "adhdPullScore",      label: "ADHD Pull",          unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  { key: "autismPullScore",    label: "Autism Pull",        unit: "/5",  higherIsWorse: false, group: "qualitative" },
+  // ── Sleep stages (device)
+  { key: "deepMin",            label: "Deep Sleep",         unit: "min", higherIsWorse: false, group: "sleep" },
+  { key: "remMin",             label: "REM",                unit: "min", higherIsWorse: false, group: "sleep" },
+  { key: "coreMin",            label: "Core Sleep",         unit: "min", higherIsWorse: false, group: "sleep" },
+  { key: "awakeMin",           label: "Awake",              unit: "min", higherIsWorse: true,  group: "sleep" },
+  // ── Vitals
+  { key: "hrv",                label: "HRV",                unit: "ms",  higherIsWorse: false, group: "vitals" },
+  { key: "rhr",                label: "Resting HR",         unit: "bpm", higherIsWorse: true,  group: "vitals" },
+  // ── Body composition
+  { key: "weightLbs",          label: "Body Weight",        unit: "lbs", higherIsWorse: false, group: "body" },
+  { key: "bodyFatPct",         label: "Body Fat",           unit: "%",   higherIsWorse: false, group: "body" },
+  { key: "skeletalMusclePct",  label: "Skeletal Muscle",    unit: "%",   higherIsWorse: false, group: "body" },
+  { key: "fatFreeMassLbs",     label: "Fat-Free Mass",      unit: "lbs", higherIsWorse: false, group: "body" },
+  { key: "waistIn",            label: "Waist",              unit: "in",  higherIsWorse: false, group: "body" },
+  // ── Hormone signal (hh:mm fields converted to minutes on entry)
+  { key: "hormoneDurationMin", label: "Hormone Duration",   unit: "min", higherIsWorse: false, group: "hormone" },
+  { key: "hormoneQuantCount",  label: "Hormone Quant",      unit: "",    higherIsWorse: false, group: "hormone" },
+  { key: "hormoneQualCount",   label: "Hormone Qual",       unit: "",    higherIsWorse: false, group: "hormone" },
 ];
 
 function buildSignals(

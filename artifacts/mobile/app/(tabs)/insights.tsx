@@ -24,6 +24,8 @@ import {
 } from "@/engine/orbitalInference";
 import type { OrbitalInference } from "@/engine/orbitalInference";
 import {
+  ALL_SIGNAL_DEFS,
+  buildAllSignals,
   buildDailyIndices,
   buildTrendSignals,
   detectInterpretations,
@@ -36,12 +38,60 @@ import type { NutritionPhaseId, ScheduleBlock, WeeklyRecommendation } from "@/ty
 
 // ─── Signal color map ─────────────────────────────────────────────────────────
 const SIGNAL_COLORS: Record<string, string> = {
-  recoveryNeedScore: Colors.light.rose,
-  adhdPullScore:     Colors.light.amber,
-  autismPullScore:   Colors.light.structuring,
-  hrv:               Colors.light.structuring,
-  rhr:               Colors.light.rose,
-  deepSleepMin:      Colors.light.accent,
+  // Primary composite
+  recoveryNeedScore:  Colors.light.rose,
+  adhdPullScore:      Colors.light.amber,
+  autismPullScore:    Colors.light.structuring,
+  // Qualitative raw
+  sleepHours:         Colors.light.accent,
+  sleepQuality:       Colors.light.accent,
+  physicalEnergy:     Colors.light.structuring,
+  motivation:         Colors.light.structuring,
+  mentalFog:          Colors.light.rose,
+  emotionalStability: Colors.light.structuring,
+  noveltyHunger:      Colors.light.amber,
+  structureHunger:    Colors.light.navyLight,
+  pressureSeek:       Colors.light.amber,
+  sensoryLoadBaseline:Colors.light.rose,
+  socialLoad:         Colors.light.amber,
+  noiseAversion:      Colors.light.rose,
+  lightAversion:      Colors.light.rose,
+  textureSensitivity: Colors.light.rose,
+  // Sleep stages
+  deepMin:            Colors.light.accent,
+  remMin:             Colors.light.navyLight,
+  coreMin:            Colors.light.navyDark,
+  awakeMin:           Colors.light.rose,
+  // Vitals
+  hrv:                Colors.light.structuring,
+  rhr:                Colors.light.rose,
+  // Body composition
+  weightLbs:          Colors.light.navyLight,
+  bodyFatPct:         Colors.light.amber,
+  skeletalMusclePct:  Colors.light.structuring,
+  fatFreeMassLbs:     Colors.light.structuring,
+  waistIn:            Colors.light.amber,
+  // Hormone signal
+  hormoneDurationMin: Colors.light.amber,
+  hormoneQuantCount:  Colors.light.navyLight,
+  hormoneQualCount:   Colors.light.accent,
+};
+
+// ─── Extended signal group config ─────────────────────────────────────────────
+const PRIMARY_SIGNAL_KEYS = new Set([
+  "recoveryNeedScore", "adhdPullScore", "autismPullScore",
+  "hrv", "rhr", "deepMin",
+]);
+
+const GROUP_ORDER = ["qualitative", "sleep", "vitals", "body", "hormone"] as const;
+type SignalGroup = typeof GROUP_ORDER[number];
+
+const GROUP_LABELS: Record<SignalGroup, string> = {
+  qualitative: "Qualitative Log",
+  sleep:       "Sleep Stages",
+  vitals:      "Vitals",
+  body:        "Body Composition",
+  hormone:     "Hormone Signal",
 };
 
 function deltaColor(delta: number, higherIsWorse: boolean): string {
@@ -985,6 +1035,24 @@ export default function InsightsScreen() {
     [trendSignals]
   );
 
+  // ── Extended signals — all fields grouped, primary 6 excluded ───────────────
+  const extendedByGroup = useMemo(() => {
+    const all = buildAllSignals(dailyIndices);
+    // Index by key for quick lookup
+    const byKey = new Map(all.map((s) => [s.key, s]));
+    const result = new Map<SignalGroup, TrendSignal[]>();
+    for (const group of GROUP_ORDER) {
+      const defs = ALL_SIGNAL_DEFS.filter(
+        (d) => d.group === group && !PRIMARY_SIGNAL_KEYS.has(d.key),
+      );
+      const signals = defs
+        .map((d) => byKey.get(d.key))
+        .filter((s): s is TrendSignal => s !== undefined && s.points.length > 0);
+      if (signals.length > 0) result.set(group, signals);
+    }
+    return result;
+  }, [dailyIndices]);
+
   // ── Per-day nutrition series ────────────────────────────────────────────────
   const nutritionSeries = useMemo((): NutritionDayPoint[] => {
     const cutoff = new Date();
@@ -1122,7 +1190,7 @@ export default function InsightsScreen() {
         <View style={styles.trendHeader}>
           <View>
             <Text style={styles.sectionTitle}>Trends</Text>
-            <Text style={styles.trendSubtitle}>6 cross-layer signals · sparse-aware</Text>
+            <Text style={styles.trendSubtitle}>Core signals · sparse-aware</Text>
           </View>
           <WindowToggle value={windowDays} onChange={setWindowDays} />
         </View>
@@ -1176,6 +1244,31 @@ export default function InsightsScreen() {
                 <Text style={styles.trendLegendText}>Gap in line = missing day</Text>
               </View>
             </View>
+          </>
+        )}
+
+        {/* ── Extended signals by group ─────────────────────────────────── */}
+        {extendedByGroup.size > 0 && (
+          <>
+            {GROUP_ORDER.map((group) => {
+              const signals = extendedByGroup.get(group);
+              if (!signals || signals.length === 0) return null;
+              return (
+                <View key={group} style={styles.extGroupSection}>
+                  <View style={styles.extGroupHeader}>
+                    <Text style={styles.extGroupLabel}>{GROUP_LABELS[group]}</Text>
+                    <Text style={styles.extGroupCount}>
+                      {signals.length} {signals.length === 1 ? "signal" : "signals"}
+                    </Text>
+                  </View>
+                  <View style={styles.signalGrid}>
+                    {signals.map((signal) => (
+                      <SignalCard key={signal.key} signal={signal} />
+                    ))}
+                  </View>
+                </View>
+              );
+            })}
           </>
         )}
 
@@ -1326,6 +1419,28 @@ const styles = StyleSheet.create({
 
   // Orbital
   orbitalSection: { marginBottom: 20 },
+
+  // Extended signal groups
+  extGroupSection: { marginBottom: 4 },
+  extGroupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    marginTop: 14,
+  },
+  extGroupLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  extGroupCount: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.light.textMuted,
+  },
 
   // Trends
   trendHeader: {
