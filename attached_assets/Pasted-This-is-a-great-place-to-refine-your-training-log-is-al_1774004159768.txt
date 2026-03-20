@@ -1,0 +1,188 @@
+This is a great place to refine — your training log is already structurally solid, it just needs language that reduces interpretation and increases signal fidelity.
+
+Right now the labels are slightly:
+	•	vague (“motivation”, “satisfaction”)
+	•	judgment-based
+	•	inconsistent with your state language system
+
+We’ll keep:
+✅ same 1–5 inputs
+✅ same fields
+❗ but convert them into perceptual, first-person, physiologically anchored labels
+
+⸻
+
+🧠 Global framing (add once at top)
+
+Replace nothing structurally, just add:
+
+Session experience profile
+(rate how the session felt in your body and mind — not how “good” it was)
+
+And:
+
+1 = minimal / absent
+3 = moderate / noticeable
+5 = strong / dominant
+
+⸻
+
+🔥 FIELD-BY-FIELD REWRITE (drop-in replacements)
+
+⸻
+
+1. Motivation before
+
+❌ Problem:
+	•	too abstract
+	•	overlaps with discipline / emotion
+
+✅ Replace with:
+
+Initiation drive (pre-session)
+how naturally starting felt
+
+Scale anchors:
+	•	low drive · neutral · strong drive
+
+⸻
+
+2. Resistance before
+
+❌ Problem:
+	•	ambiguous (mental? physical? emotional?)
+
+✅ Replace with:
+
+Start friction (pre-session)
+how much resistance was present before beginning
+
+Scale anchors:
+	•	none · moderate · high
+
+⸻
+
+3. Satisfaction after
+
+❌ Problem:
+	•	highly subjective / reward-biased
+
+✅ Replace with:
+
+Session coherence (post-session)
+how complete and aligned the session felt
+
+Scale anchors:
+	•	fragmented · acceptable · cohesive
+
+⸻
+
+4. Later fatigue cost
+
+❌ Problem:
+	•	wording is slightly unclear
+
+✅ Replace with:
+
+Delayed fatigue load
+how much fatigue appeared after the session
+
+Scale anchors:
+	•	none · moderate · heavy
+
+⸻
+
+5. Bedtime impact
+
+❌ Problem:
+	•	unclear direction (good or bad?)
+
+✅ Replace with:
+
+Sleep interference potential
+how much this session affected ability to settle later
+
+Scale anchors:
+	•	none · noticeable · disruptive
+
+⸻
+
+6. Effect on focus
+
+❌ Problem:
+	•	ambiguous polarity
+
+✅ Replace with:
+
+Cognitive carryover
+effect on mental clarity after the session
+
+Scale anchors:
+	•	worsened · neutral · improved
+
+⸻
+
+7. Effect on sensory calm
+
+❌ Problem:
+	•	slightly awkward phrasing
+
+✅ Replace with:
+
+Nervous system settling
+effect on sensory calm after the session
+
+Scale anchors:
+	•	more agitated · unchanged · more settled
+
+⸻
+
+🧠 Optional micro-upgrade (high impact)
+
+Add tiny helper text under each:
+
+Example:
+
+Initiation drive (pre-session)
+how naturally starting felt
+
+This dramatically improves consistency.
+
+⸻
+
+🔥 What this fixes
+
+Before:
+	•	user guesses meaning
+	•	mixes emotion + performance
+	•	inconsistent scoring
+
+After:
+	•	user reports felt experience
+	•	consistent mental model
+	•	clean data for:
+	•	hypertrophy response
+	•	fatigue modeling
+	•	phase alignment
+
+⸻
+
+🧠 Final insight (important)
+
+You now have:
+	•	pre-state (initiation + friction)
+	•	in-session experience (coherence)
+	•	post-state (fatigue + cognitive + sensory + sleep)
+
+👉 This is a full causal chain, not just ratings.
+
+⸻
+
+🚀 If you want next step
+
+I can:
+
+👉 map these directly into a training quality score (0–100)
+👉 or integrate them into your orbital phase / readiness engine
+
+Because with this wording, your data becomes model-grade.

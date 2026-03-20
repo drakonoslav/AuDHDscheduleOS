@@ -402,14 +402,18 @@ export default function TrainingLogScreen() {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Ratings</Text>
-        <RatingSlider label="Motivation before" value={motivationBefore} onChange={setMotivationBefore} />
-        <RatingSlider label="Resistance before" value={resistanceBefore} onChange={setResistanceBefore} inverted />
-        <RatingSlider label="Satisfaction after" value={satisfactionAfter} onChange={setSatisfactionAfter} />
-        <RatingSlider label="Later fatigue cost" value={laterFatigueCost} onChange={setLaterFatigueCost} inverted />
-        <RatingSlider label="Bedtime impact" value={bedtimeImpact} onChange={setBedtimeImpact} inverted />
-        <RatingSlider label="Effect on focus" value={effectOnFocus} onChange={setEffectOnFocus} />
-        <RatingSlider label="Effect on sensory calm" value={effectOnSensoryCalm} onChange={setEffectOnSensoryCalm} />
+        <Text style={styles.sectionTitle}>Session experience profile</Text>
+        <Text style={styles.ratingNote}>
+          Rate how the session felt in your body and mind — not how well it went.{"\n"}
+          1 = minimal / absent{"   ·   "}3 = moderate / noticeable{"   ·   "}5 = strong / dominant
+        </Text>
+        <RatingSlider label="Initiation drive (pre-session)" value={motivationBefore} onChange={setMotivationBefore} />
+        <RatingSlider label="Start friction (pre-session)" value={resistanceBefore} onChange={setResistanceBefore} inverted />
+        <RatingSlider label="Session coherence (post-session)" value={satisfactionAfter} onChange={setSatisfactionAfter} />
+        <RatingSlider label="Delayed fatigue load" value={laterFatigueCost} onChange={setLaterFatigueCost} inverted />
+        <RatingSlider label="Sleep interference potential" value={bedtimeImpact} onChange={setBedtimeImpact} inverted />
+        <RatingSlider label="Cognitive carryover" value={effectOnFocus} onChange={setEffectOnFocus} />
+        <RatingSlider label="Nervous system settling" value={effectOnSensoryCalm} onChange={setEffectOnSensoryCalm} />
 
         <Text style={styles.fieldLabel}>Notes</Text>
         <TextInput
@@ -597,6 +601,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.borderLight,
     paddingBottom: 6,
+  },
+  ratingNote: {
+    fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textSecondary,
+    lineHeight: 18, backgroundColor: Colors.light.creamMid, borderRadius: 8,
+    padding: 10, marginBottom: 12,
   },
   plannedRow: {
     flexDirection: "row",
