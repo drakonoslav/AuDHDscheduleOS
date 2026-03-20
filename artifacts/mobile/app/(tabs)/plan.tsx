@@ -259,8 +259,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dateBar: { flexGrow: 0, marginBottom: 8 },
-  dateBarContent: { paddingHorizontal: 16, gap: 6 },
+  dateBar: { flexGrow: 0, height: 78, marginBottom: 4 },
+  dateBarContent: { paddingHorizontal: 16, paddingVertical: 8, gap: 6, alignItems: "center" },
   dateChip: {
     alignItems: "center",
     paddingHorizontal: 12,
