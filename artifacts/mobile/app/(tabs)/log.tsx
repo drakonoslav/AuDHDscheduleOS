@@ -124,7 +124,7 @@ function NutritionScoreCard({
       color: Colors.light.tint,
     },
     {
-      label: "Calories",
+      label: "Kcal",
       value: kcalRatio,
       actual: `${displayKcal}`,
       target: `${result.targetKcal}`,
