@@ -101,6 +101,20 @@ function NutritionScoreCard({
       ? Colors.light.amber
       : Colors.light.rose;
 
+  // Whether the user has acted on any meal blocks today (done / partial / skipped).
+  // Until that happens we show planned totals so the card is useful before the day is logged.
+  const anyActed = result.completedMeals > 0 ||
+    blocks.some((b) => b.blockType === "meal" && b.status === "skipped");
+
+  const displayKcal    = anyActed ? result.actualKcal    : result.plannedKcal;
+  const displayProtein = anyActed ? result.actualProtein : result.plannedProtein;
+  const kcalRatio      = anyActed
+    ? result.caloricAdherence
+    : result.targetKcal > 0 ? Math.min(1, result.plannedKcal / result.targetKcal) : 0;
+  const proteinRatio   = anyActed
+    ? result.proteinAdherence
+    : result.targetProtein > 0 ? Math.min(1, result.plannedProtein / result.targetProtein) : 0;
+
   const rows: { label: string; value: number; actual: string; target: string; color: string }[] = [
     {
       label: "Meals",
@@ -111,15 +125,15 @@ function NutritionScoreCard({
     },
     {
       label: "Calories",
-      value: result.caloricAdherence,
-      actual: `${result.actualKcal}`,
+      value: kcalRatio,
+      actual: `${displayKcal}`,
       target: `${result.targetKcal}`,
       color: Colors.light.navyLight,
     },
     {
       label: "Protein",
-      value: result.proteinAdherence,
-      actual: `${result.actualProtein}g`,
+      value: proteinRatio,
+      actual: `${displayProtein}g`,
       target: `${result.targetProtein}g`,
       color: Colors.light.structuring,
     },

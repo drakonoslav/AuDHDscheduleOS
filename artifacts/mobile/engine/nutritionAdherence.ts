@@ -36,10 +36,12 @@ export interface NutritionAdherenceResult {
   timingScore:      number;   // 0.0 – 1.0  (critical slots hit)
   overallScore:     number;   // 0 – 100
 
-  actualKcal:    number;
-  targetKcal:    number;
-  actualProtein: number;
-  targetProtein: number;
+  actualKcal:    number;   // kcal actually consumed (done + partial blocks)
+  targetKcal:    number;   // phase daily kcal target
+  actualProtein: number;   // protein actually consumed
+  targetProtein: number;   // phase daily protein target
+  plannedKcal:   number;   // kcal the full day's non-skipped plan delivers
+  plannedProtein:number;   // protein the full day's non-skipped plan delivers
 
   completedMeals:    number;   // count of done + partial blocks
   totalMeals:        number;   // all meal-type blocks for the day
@@ -59,6 +61,8 @@ export function computeNutritionAdherence(
 
   let actualKcal    = 0;
   let actualProtein = 0;
+  let plannedKcal   = 0;   // full plan total: every non-skipped slot at factor 1.0
+  let plannedProtein= 0;
   let completionSum = 0;     // sum of completion factors (0.0 – 1.0) across all meal blocks
   let criticalHit   = 0;
   const criticalMissed: MealSlot[] = [];
@@ -74,6 +78,13 @@ export function computeNutritionAdherence(
     actualKcal       += template.totalKcal    * factor;
     actualProtein    += template.totalProtein * factor;
     completionSum    += factor;
+
+    // Planned totals include all non-skipped blocks at full value so the card
+    // can display what the day is designed to deliver regardless of completion.
+    if (block.status !== "skipped") {
+      plannedKcal    += template.totalKcal;
+      plannedProtein += template.totalProtein;
+    }
 
     if (CRITICAL_SLOTS.includes(slot)) {
       if (factor > 0) {
@@ -117,6 +128,8 @@ export function computeNutritionAdherence(
     targetKcal:        targets.kcal,
     actualProtein:     Math.round(actualProtein * 10) / 10,
     targetProtein:     targets.protein,
+    plannedKcal:       Math.round(plannedKcal),
+    plannedProtein:    Math.round(plannedProtein * 10) / 10,
     completedMeals,
     totalMeals,
     criticalScheduled: scheduledCritical,
