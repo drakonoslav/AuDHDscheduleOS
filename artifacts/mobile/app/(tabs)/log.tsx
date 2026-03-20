@@ -15,7 +15,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PhaseTag } from "@/components/ui/PhaseTag";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
-import type { BlockStatus, ScheduleBlock } from "@/types";
+import { NUTRITION_PHASE_MAP } from "@/data/nutritionPhases";
+import { computeNutritionAdherence, slotDisplayName } from "@/engine/nutritionAdherence";
+import type { BlockStatus, NutritionPhaseId, ScheduleBlock } from "@/types";
 
 // ─── Training Log Card ────────────────────────────────────────────────────────
 
@@ -68,6 +70,154 @@ function TrainingCard({ date, type }: { date: string; type: "cardio" | "lift" })
     </Pressable>
   );
 }
+
+// ─── Nutrition Score Card ─────────────────────────────────────────────────────
+
+function ScoreBar({ value, color }: { value: number; color: string }) {
+  return (
+    <View style={nsStyles.barTrack}>
+      <View style={[nsStyles.barFill, { width: `${Math.round(value * 100)}%` as any, backgroundColor: color }]} />
+    </View>
+  );
+}
+
+function NutritionScoreCard({
+  blocks,
+  nutritionPhaseId,
+}: {
+  blocks: ScheduleBlock[];
+  nutritionPhaseId: NutritionPhaseId;
+}) {
+  const result = useMemo(
+    () => computeNutritionAdherence(blocks, nutritionPhaseId),
+    [blocks, nutritionPhaseId],
+  );
+  const phaseName = NUTRITION_PHASE_MAP[nutritionPhaseId]?.phaseName ?? nutritionPhaseId;
+
+  const scoreColor =
+    result.overallScore >= 75
+      ? Colors.light.structuring
+      : result.overallScore >= 45
+      ? Colors.light.amber
+      : Colors.light.rose;
+
+  const rows: { label: string; value: number; actual: string; target: string; color: string }[] = [
+    {
+      label: "Meals",
+      value: result.mealAdherence,
+      actual: `${result.completedMeals}`,
+      target: `${result.totalMeals}`,
+      color: Colors.light.tint,
+    },
+    {
+      label: "Calories",
+      value: result.caloricAdherence,
+      actual: `${result.actualKcal}`,
+      target: `${result.targetKcal}`,
+      color: Colors.light.navyLight,
+    },
+    {
+      label: "Protein",
+      value: result.proteinAdherence,
+      actual: `${result.actualProtein}g`,
+      target: `${result.targetProtein}g`,
+      color: Colors.light.structuring,
+    },
+    {
+      label: "Timing",
+      value: result.timingScore,
+      actual: `${Math.round(result.timingScore * result.criticalScheduled)}`,
+      target: `${result.criticalScheduled} critical`,
+      color: Colors.light.amber,
+    },
+  ];
+
+  return (
+    <Pressable
+      onPress={() => {
+        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
+        router.push("/snapshot");
+      }}
+      style={({ pressed }) => [nsStyles.card, pressed && { opacity: 0.88 }]}
+    >
+      <View style={nsStyles.headerRow}>
+        <Text style={nsStyles.cardTitle}>Nutrition Score</Text>
+        <View style={nsStyles.phaseChip}>
+          <Text style={nsStyles.phaseChipText}>{phaseName}</Text>
+          <Feather name="edit-2" size={10} color={Colors.light.textMuted} />
+        </View>
+      </View>
+
+      <View style={nsStyles.scoreRow}>
+        <Text style={[nsStyles.scoreNum, { color: scoreColor }]}>{result.overallScore}</Text>
+        <Text style={nsStyles.scoreOf}>/100</Text>
+        <View style={nsStyles.scoreMeta}>
+          <Text style={nsStyles.scoreMetaLine}>
+            {result.completedMeals}/{result.totalMeals} meals · {result.actualKcal} kcal
+          </Text>
+          {result.criticalMissed.length > 0 && (
+            <Text style={nsStyles.criticalMissed}>
+              ⚠ Missed: {result.criticalMissed.map(slotDisplayName).join(", ")}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {rows.map((row) => (
+        <View key={row.label} style={nsStyles.metricRow}>
+          <Text style={nsStyles.metricLabel}>{row.label}</Text>
+          <ScoreBar value={row.value} color={row.color} />
+          <Text style={nsStyles.metricVal}>
+            {row.actual}
+            <Text style={nsStyles.metricTarget}> / {row.target}</Text>
+          </Text>
+        </View>
+      ))}
+    </Pressable>
+  );
+}
+
+const nsStyles = StyleSheet.create({
+  card: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 14,
+    marginBottom: 10,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  cardTitle: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: Colors.light.text, textTransform: "uppercase", letterSpacing: 0.4 },
+  phaseChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.light.creamMid,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  phaseChipText: { fontFamily: "Inter_500Medium", fontSize: 11, color: Colors.light.textSecondary },
+  scoreRow: { flexDirection: "row", alignItems: "baseline", gap: 4, marginBottom: 12 },
+  scoreNum: { fontFamily: "Inter_700Bold", fontSize: 36, letterSpacing: -1 },
+  scoreOf: { fontFamily: "Inter_400Regular", fontSize: 14, color: Colors.light.textMuted, marginBottom: 2 },
+  scoreMeta: { flex: 1, marginLeft: 8 },
+  scoreMetaLine: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textSecondary },
+  criticalMissed: { fontFamily: "Inter_500Medium", fontSize: 10, color: Colors.light.rose, marginTop: 2 },
+  metricRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  metricLabel: { fontFamily: "Inter_500Medium", fontSize: 11, color: Colors.light.textMuted, width: 52 },
+  barTrack: { flex: 1, height: 5, backgroundColor: Colors.light.borderLight, borderRadius: 3, overflow: "hidden" },
+  barFill: { height: 5, borderRadius: 3 },
+  metricVal: { fontFamily: "Inter_600SemiBold", fontSize: 11, color: Colors.light.text, width: 70, textAlign: "right" },
+  metricTarget: { fontFamily: "Inter_400Regular", fontSize: 10, color: Colors.light.textMuted },
+});
 
 const STATUS_OPTIONS: BlockStatus[] = ["done", "partial", "skipped", "moved"];
 
@@ -193,7 +343,7 @@ function QuantLogCard({ date }: { date: string }) {
 
 export default function LogScreen() {
   const insets = useSafeAreaInsets();
-  const { today, blocksForDate, snapshotForDate } = useApp();
+  const { today, blocksForDate, snapshotForDate, state } = useApp();
   const [selectedDate, setSelectedDate] = useState(today);
 
   const blocks = useMemo(() => {
@@ -202,6 +352,9 @@ export default function LogScreen() {
   }, [blocksForDate, selectedDate]);
 
   const snapshot = snapshotForDate(selectedDate);
+  // Use the phase logged in that day's snapshot; fall back to the global phase setting
+  const nutritionPhaseId: NutritionPhaseId =
+    snapshot?.nutritionPhaseId ?? state.currentNutritionPhaseId;
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const dates = useMemo(() => {
@@ -310,6 +463,11 @@ export default function LogScreen() {
         {/* Training logs */}
         <TrainingCard date={selectedDate} type="cardio" />
         <TrainingCard date={selectedDate} type="lift" />
+
+        {/* Nutrition score — computed from meal block statuses + active phase */}
+        {blocks.some((b) => b.blockType === "meal") && (
+          <NutritionScoreCard blocks={blocks} nutritionPhaseId={nutritionPhaseId} />
+        )}
 
         {/* Stats row */}
         {blocks.length > 0 && (
