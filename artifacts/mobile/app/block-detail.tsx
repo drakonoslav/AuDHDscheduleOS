@@ -391,20 +391,20 @@ export default function BlockDetailScreen() {
         {tab === "ratings" && (
           <View style={styles.section}>
             <Text style={styles.ratingNote}>
-              Rate how this block felt. 1 = low, 5 = high.{"\n"}
-              High resistance or overload with on-time execution may indicate a state mismatch, not a discipline failure.
+              Block experience profile — describe how this block was experienced, not how well it went.{"\n"}
+              1 = minimal / absent{"   ·   "}3 = moderate / noticeable{"   ·   "}5 = strong / dominant
             </Text>
-            <RatingSlider label="Ease of starting" value={ratings.ease ?? 0} onChange={(v) => updateRating("ease", v)} />
-            <RatingSlider label="Resistance felt" value={ratings.resistance ?? 0} onChange={(v) => updateRating("resistance", v)} inverted />
-            <RatingSlider label="Mental overload" value={ratings.overload ?? 0} onChange={(v) => updateRating("overload", v)} inverted />
-            <RatingSlider label="Focus quality" value={ratings.focus ?? 0} onChange={(v) => updateRating("focus", v)} />
-            <RatingSlider label="Satisfaction" value={ratings.satisfaction ?? 0} onChange={(v) => updateRating("satisfaction", v)} />
-            <RatingSlider label="Transition difficulty" value={ratings.transitionDifficulty ?? 0} onChange={(v) => updateRating("transitionDifficulty", v)} inverted />
-            <Text style={styles.fieldLabelSection}>Placement Fit</Text>
-            <RatingSlider label="Felt too early" value={ratings.feltTooEarly ?? 0} onChange={(v) => updateRating("feltTooEarly", v)} inverted />
-            <RatingSlider label="Felt too late" value={ratings.feltTooLate ?? 0} onChange={(v) => updateRating("feltTooLate", v)} inverted />
-            <RatingSlider label="Felt too long" value={ratings.feltTooLong ?? 0} onChange={(v) => updateRating("feltTooLong", v)} inverted />
-            <RatingSlider label="Felt too short" value={ratings.feltTooShort ?? 0} onChange={(v) => updateRating("feltTooShort", v)} inverted />
+            <RatingSlider label="Start friction" value={ratings.ease ?? 0} onChange={(v) => updateRating("ease", v)} />
+            <RatingSlider label="Internal resistance" value={ratings.resistance ?? 0} onChange={(v) => updateRating("resistance", v)} inverted />
+            <RatingSlider label="Cognitive load" value={ratings.overload ?? 0} onChange={(v) => updateRating("overload", v)} inverted />
+            <RatingSlider label="Focus stability" value={ratings.focus ?? 0} onChange={(v) => updateRating("focus", v)} />
+            <RatingSlider label="Completion coherence" value={ratings.satisfaction ?? 0} onChange={(v) => updateRating("satisfaction", v)} />
+            <RatingSlider label="Transition cost" value={ratings.transitionDifficulty ?? 0} onChange={(v) => updateRating("transitionDifficulty", v)} inverted />
+            <Text style={styles.fieldLabelSection}>Temporal alignment</Text>
+            <RatingSlider label="Occurred before readiness" value={ratings.feltTooEarly ?? 0} onChange={(v) => updateRating("feltTooEarly", v)} inverted />
+            <RatingSlider label="Occurred after optimal window" value={ratings.feltTooLate ?? 0} onChange={(v) => updateRating("feltTooLate", v)} inverted />
+            <RatingSlider label="Duration exceeded capacity" value={ratings.feltTooLong ?? 0} onChange={(v) => updateRating("feltTooLong", v)} inverted />
+            <RatingSlider label="Duration insufficient for completion" value={ratings.feltTooShort ?? 0} onChange={(v) => updateRating("feltTooShort", v)} inverted />
           </View>
         )}
 
@@ -416,12 +416,12 @@ export default function BlockDetailScreen() {
             </Text>
             {(
               [
-                { key: "noise", label: "Noise was a factor" },
-                { key: "light", label: "Light was uncomfortable" },
-                { key: "textureDiscomfort", label: "Texture/clothing discomfort" },
+                { key: "noise", label: "Noise contributed" },
+                { key: "light", label: "Light contributed" },
+                { key: "textureDiscomfort", label: "Tactile discomfort present" },
                 { key: "crowding", label: "Crowding present" },
-                { key: "pressureHelped", label: "Pressure/compression helped" },
-                { key: "headphonesUsed", label: "Headphones used" },
+                { key: "pressureHelped", label: "Compression helped regulate" },
+                { key: "headphonesUsed", label: "Audio isolation used" },
               ] as { key: keyof SensoryNotes; label: string }[]
             ).map(({ key, label }) => (
               <View key={key} style={styles.sensoryRow}>

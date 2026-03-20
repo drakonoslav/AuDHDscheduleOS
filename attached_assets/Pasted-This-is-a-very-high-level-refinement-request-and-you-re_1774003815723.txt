@@ -1,0 +1,350 @@
+This is a very high-level refinement request — and you’re exactly right to focus on wording.
+
+Right now your system is structurally excellent, but some labels still carry judgmental or vague semantics, which introduces submission noise.
+
+What you want is:
+
+perceptual anchoring → not evaluation
+
+So the user reports what it felt like, not how good/bad it was.
+
+⸻
+
+🧠 Core principle (apply everywhere)
+
+❌ Current (problematic)
+	•	“low / high”
+	•	“good / bad”
+	•	“clear / foggy”
+	•	“drained / energized”
+
+These force interpretation.
+
+⸻
+
+✅ Target (what you’re already moving toward)
+	•	state description
+	•	neutral gradients
+	•	first-person embodiment
+
+⸻
+
+🔥 Global rename rule (very important)
+
+Change:
+
+1–5 scale
+
+to:
+
+State intensity scale
+1 = minimal / absent
+3 = moderate / noticeable
+5 = strong / dominant
+
+👉 This alone will improve accuracy dramatically.
+
+⸻
+
+🧬 SECTION-BY-SECTION REWRITE (drop-in ready)
+
+⸻
+
+🧠 ENERGY & STATE (refined)
+
+Physical energy
+
+Old: “my body feels…”
+New:
+
+Physical energy — body activation level
+
+low activation · steady baseline · high drive
+
+⸻
+
+Motivation
+
+Old: “starting things feels…”
+New:
+
+Initiation drive — starting actions feels…
+
+friction present · neutral · self-starting
+
+⸻
+
+Mental clarity
+
+This one is GOOD structurally but slightly judgmental.
+
+New:
+
+Cognitive sharpness — thinking feels…
+
+diffuse · mixed clarity · sharply defined
+
+⸻
+
+Emotional stability
+
+New:
+
+Emotional regulation — internal state feels…
+
+volatile · variable · stable
+
+⸻
+
+🧠 NEURO PULL (this is already strong — refine tone)
+
+Novelty hunger
+
+New:
+
+Novelty pull — desire for new input
+
+prefers familiar · open to variation · seeking stimulation
+
+⸻
+
+Structure hunger (this one is VERY good already)
+
+Slight upgrade:
+
+Structure need — environment preference
+
+flexible is fine · some structure helps · needs predictability
+
+⸻
+
+Pressure / compression
+
+New:
+
+Compression drive — desire for grounding pressure
+
+not needed · somewhat helpful · strongly desired
+
+⸻
+
+🧠 SENSORY (this section is excellent, just unify language)
+
+Sensory load baseline
+
+New:
+
+Sensory load baseline — current system load
+
+low load · moderate load · high load
+
+⸻
+
+Social load
+
+New:
+
+Social cost — interaction demand feels…
+
+easy · effortful · costly
+
+⸻
+
+Noise aversion
+
+New:
+
+Auditory sensitivity — sound impact feels…
+
+neutral · irritating · overwhelming
+
+⸻
+
+Light aversion
+
+New:
+
+Visual sensitivity — light exposure feels…
+
+neutral · irritating · overwhelming
+
+⸻
+
+Texture sensitivity
+
+New:
+
+Tactile sensitivity — physical contact feels…
+
+neutral · noticeable · disruptive
+
+⸻
+
+🔥 BLOCK-LEVEL RATINGS (THIS IS WHERE BIG GAINS ARE)
+
+The key issue here is interpretation vs sensation
+
+⸻
+
+Replace header:
+
+Old:
+
+Rate how this block felt
+
+New:
+
+Block experience profile
+(describe how this block was experienced — not how well it went)
+
+⸻
+
+Metrics rewrite
+
+Ease of starting
+
+Start friction
+
+immediate start · some resistance · strong resistance
+
+⸻
+
+Resistance felt
+
+Rename to avoid redundancy:
+
+Internal resistance
+
+minimal · moderate · high
+
+⸻
+
+Mental overload
+
+Cognitive load
+
+light · manageable · overloaded
+
+⸻
+
+Focus quality
+
+Focus stability
+
+scattered · intermittent · sustained
+
+⸻
+
+Satisfaction
+
+This is the most dangerous one (too evaluative)
+
+Replace with:
+
+Completion coherence
+
+disjointed · acceptable · cohesive
+
+⸻
+
+Transition difficulty
+
+Transition cost
+
+smooth · noticeable · difficult
+
+⸻
+
+🔥 PLACEMENT FIT (VERY IMPORTANT SECTION)
+
+This is one of your most powerful ideas — just needs clarity.
+
+⸻
+
+Rename section:
+
+Old: Placement Fit
+New:
+
+Temporal alignment
+
+⸻
+
+Felt too early
+
+→
+
+Occurred before readiness
+
+⸻
+
+Felt too late
+
+→
+
+Occurred after optimal window
+
+⸻
+
+Felt too long
+
+→
+
+Duration exceeded capacity
+
+⸻
+
+Felt too short
+
+→
+
+Duration insufficient for completion
+
+⸻
+
+🧠 TOGGLES SECTION (already excellent)
+
+Just tighten wording:
+	•	Noise was a factor → Noise contributed
+	•	Light was uncomfortable → Light contributed
+	•	Texture discomfort → Tactile discomfort present
+	•	Crowding present → Crowding present (keep)
+	•	Pressure helped → Compression helped regulate
+	•	Headphones used → Audio isolation used
+
+⸻
+
+🚀 WHAT THIS FIXES
+
+After this change:
+
+BEFORE
+	•	user interprets
+	•	user judges
+	•	inconsistent logging
+
+AFTER
+	•	user reports sensation
+	•	consistent scale mapping
+	•	cleaner data for modeling
+
+⸻
+
+🧠 Final insight (this is the big one)
+
+You are not building:
+
+❌ a rating system
+
+You are building:
+
+✅ a state capture language
+
+⸻
+
+If you want next step, I can:
+
+👉 convert this into a TypeScript config schema (labels + tooltips)
+👉 or map each field into your orbital inference weights
+
+That’s where wording → math becomes insanely powerful.
