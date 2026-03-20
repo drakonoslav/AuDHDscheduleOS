@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Pressable,
@@ -31,8 +31,10 @@ const ALL_PHASES: NutritionPhaseId[] = [
 export default function SnapshotScreen() {
   const insets = useSafeAreaInsets();
   const { today, snapshotForDate, upsertSnapshot, state } = useApp();
+  const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
+  const targetDate = dateParam ?? today;
 
-  const existing = snapshotForDate(today);
+  const existing = snapshotForDate(targetDate);
 
   const [sleepHours, setSleepHours] = useState(existing?.sleepHours?.toString() ?? "7");
   const [sleepQuality, setSleepQuality] = useState(existing?.sleepQuality ?? 3);
@@ -72,7 +74,7 @@ export default function SnapshotScreen() {
 
   const handleSave = () => {
     const snapshot: DailyStateSnapshot = {
-      date: today,
+      date: targetDate,
       sleepHours: parseFloat(sleepHours) || 7,
       sleepQuality,
       physicalEnergy,
@@ -100,7 +102,12 @@ export default function SnapshotScreen() {
         <Pressable onPress={() => router.back()} style={styles.closeBtn}>
           <Feather name="x" size={22} color={Colors.light.textSecondary} />
         </Pressable>
-        <Text style={styles.title}>Daily State</Text>
+        <Text style={styles.title}>
+          Daily State
+          {targetDate !== today
+            ? `  ·  ${new Date(targetDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`
+            : ""}
+        </Text>
         <View style={{ width: 36 }} />
       </View>
 

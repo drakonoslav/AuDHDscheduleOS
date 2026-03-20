@@ -84,9 +84,11 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
 function NutritionScoreCard({
   blocks,
   nutritionPhaseId,
+  date,
 }: {
   blocks: ScheduleBlock[];
   nutritionPhaseId: NutritionPhaseId;
+  date: string;
 }) {
   const result = useMemo(
     () => computeNutritionAdherence(blocks, nutritionPhaseId),
@@ -150,7 +152,7 @@ function NutritionScoreCard({
     <Pressable
       onPress={() => {
         try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) {}
-        router.push("/snapshot");
+        router.push({ pathname: "/snapshot", params: { date } });
       }}
       style={({ pressed }) => [nsStyles.card, pressed && { opacity: 0.88 }]}
     >
@@ -485,7 +487,7 @@ export default function LogScreen() {
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push("/snapshot");
+            router.push({ pathname: "/snapshot", params: { date: selectedDate } });
           }}
           style={({ pressed }) => [styles.snapshotCard, pressed && { opacity: 0.85 }, snapshot && styles.snapshotCardDone]}
         >
@@ -518,7 +520,7 @@ export default function LogScreen() {
 
         {/* Nutrition score — computed from meal block statuses + active phase */}
         {blocks.some((b) => b.blockType === "meal") && (
-          <NutritionScoreCard blocks={blocks} nutritionPhaseId={nutritionPhaseId} />
+          <NutritionScoreCard blocks={blocks} nutritionPhaseId={nutritionPhaseId} date={selectedDate} />
         )}
 
         {/* Stats row */}
