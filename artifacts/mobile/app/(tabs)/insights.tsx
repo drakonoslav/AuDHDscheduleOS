@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
+import { computeNutritionAdherence } from "@/engine/nutritionAdherence";
 import {
   inferOrbitalPhase,
   ORBITAL_COLORS,
@@ -31,7 +32,7 @@ import type {
   CrossLayerInterpretation,
   TrendSignal,
 } from "@/engine/trendEngine";
-import type { NutritionPhaseId, WeeklyRecommendation } from "@/types";
+import type { NutritionPhaseId, ScheduleBlock, WeeklyRecommendation } from "@/types";
 
 // ─── Signal color map ─────────────────────────────────────────────────────────
 const SIGNAL_COLORS: Record<string, string> = {
@@ -232,6 +233,226 @@ const sc = StyleSheet.create({
   pointCount: { fontFamily: "Inter_400Regular", fontSize: 9, color: Colors.light.textMuted, marginTop: 2 },
   emptyWrap: { height: 52, alignItems: "center", justifyContent: "center" },
   emptyText: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textMuted },
+});
+
+// ─── Nutrition Trend Chart ────────────────────────────────────────────────────
+interface NutritionDayPoint {
+  date: string;
+  kcal: number;     targetKcal: number;
+  protein: number;  targetProtein: number;
+  carbs: number;    targetCarbs: number;
+  fat: number;      targetFat: number;
+}
+
+const NCHART_H = 56;
+
+function NutritionTrendChart({
+  points,
+  label,
+  color,
+  unit,
+  target,
+  fmt,
+}: {
+  points: { date: string; value: number }[];
+  label: string;
+  color: string;
+  unit: string;
+  target: number;
+  fmt?: (v: number) => string;
+}) {
+  const [w, setW] = useState(0);
+  const onLayout = useCallback(
+    (e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width - 28),
+    [],
+  );
+
+  const display = fmt ?? ((v: number) => Math.round(v).toString());
+  const latestPt = points.length > 0 ? points[points.length - 1]! : null;
+  const latestVal = latestPt?.value ?? 0;
+  const avg = points.length > 0
+    ? points.reduce((s, p) => s + p.value, 0) / points.length
+    : 0;
+  const adherePct = target > 0
+    ? Math.min(100, Math.round((latestVal / target) * 100))
+    : null;
+
+  // Compute SVG coordinates
+  const canDraw = points.length >= 2 && w > 4;
+  let sparkPath = "";
+  let targetLineY = NCHART_H / 2;
+  let dotX = 0;
+  let dotY = 0;
+
+  if (canDraw) {
+    const values = points.map((p) => p.value);
+    const allVals = [...values, target];
+    const minV = Math.min(...allVals) * 0.9;
+    const maxV = Math.max(...allVals) * 1.08;
+    const rangeV = maxV - minV || 1;
+    const minT = new Date(points[0]!.date).getTime();
+    const maxT = new Date(points[points.length - 1]!.date).getTime();
+    const rangeT = maxT - minT || 1;
+    const PAD = 4;
+    const toX = (d: string) =>
+      PAD + ((new Date(d).getTime() - minT) / rangeT) * (w - PAD * 2);
+    const toY = (v: number) =>
+      PAD + ((maxV - v) / rangeV) * (NCHART_H - PAD * 2);
+
+    targetLineY = toY(target);
+
+    for (let i = 0; i < points.length; i++) {
+      const pt = points[i]!;
+      const x = toX(pt.date);
+      const y = toY(pt.value);
+      if (i === 0) {
+        sparkPath += `M${x.toFixed(1)},${y.toFixed(1)}`;
+      } else {
+        const gap =
+          new Date(pt.date).getTime() -
+          new Date(points[i - 1]!.date).getTime();
+        sparkPath +=
+          gap > MS_DAY * 1.5
+            ? ` M${x.toFixed(1)},${y.toFixed(1)}`
+            : ` L${x.toFixed(1)},${y.toFixed(1)}`;
+      }
+    }
+
+    dotX = toX(latestPt!.date);
+    dotY = toY(latestPt!.value);
+  }
+
+  return (
+    <View style={nt.card} onLayout={onLayout}>
+      <View style={nt.topRow}>
+        <Text style={nt.label}>{label}</Text>
+        {adherePct !== null && (
+          <View
+            style={[
+              nt.badge,
+              {
+                backgroundColor:
+                  adherePct >= 90
+                    ? Colors.light.structuring + "22"
+                    : Colors.light.amber + "22",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                nt.badgeText,
+                {
+                  color:
+                    adherePct >= 90
+                      ? Colors.light.structuring
+                      : Colors.light.amber,
+                },
+              ]}
+            >
+              {adherePct}% of target
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={nt.valueRow}>
+        <Text style={[nt.value, { color }]}>
+          {latestPt ? display(latestVal) : "—"}
+        </Text>
+        <Text style={nt.unit}>{unit}</Text>
+        {points.length > 1 && (
+          <Text style={nt.meta}>  avg {display(avg)}</Text>
+        )}
+        <Text style={nt.meta}>  / {display(target)}</Text>
+      </View>
+
+      {canDraw ? (
+        <Svg width={w} height={NCHART_H} style={{ marginTop: 8 }}>
+          <Path
+            d={`M4,${targetLineY.toFixed(1)} L${(w - 4).toFixed(1)},${targetLineY.toFixed(1)}`}
+            fill="none"
+            stroke={color}
+            strokeWidth={1}
+            strokeDasharray="5,4"
+            opacity={0.3}
+          />
+          <Path
+            d={sparkPath}
+            fill="none"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <Circle cx={dotX} cy={dotY} r={3.5} fill={color} />
+        </Svg>
+      ) : (
+        <View style={nt.emptyChart}>
+          <Text style={nt.emptyChartText}>
+            {points.length === 0 ? "No data yet" : "Need 2+ days"}
+          </Text>
+        </View>
+      )}
+
+      <Text style={nt.pointCount}>
+        {points.length} {points.length === 1 ? "day" : "days"} of data
+      </Text>
+    </View>
+  );
+}
+
+const nt = StyleSheet.create({
+  card: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 14,
+    marginBottom: 8,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  label: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    color: Colors.light.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  badgeText: { fontFamily: "Inter_600SemiBold", fontSize: 10 },
+  valueRow: { flexDirection: "row", alignItems: "baseline", gap: 2 },
+  value: { fontFamily: "Inter_700Bold", fontSize: 22, letterSpacing: -0.5 },
+  unit: { fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.light.textMuted },
+  meta: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textMuted },
+  emptyChart: {
+    height: NCHART_H,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  emptyChartText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.light.textMuted,
+  },
+  pointCount: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 9,
+    color: Colors.light.textMuted,
+    marginTop: 4,
+  },
+  sectionSubtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.light.textMuted,
+    marginBottom: 10,
+    marginTop: -2,
+  },
 });
 
 // ─── Orbital Pressure Section ─────────────────────────────────────────────────
@@ -764,6 +985,37 @@ export default function InsightsScreen() {
     [trendSignals]
   );
 
+  // ── Per-day nutrition series ────────────────────────────────────────────────
+  const nutritionSeries = useMemo((): NutritionDayPoint[] => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - windowDays);
+
+    // Group meal blocks by date
+    const byDate = new Map<string, ScheduleBlock[]>();
+    for (const block of state.blocks) {
+      if (block.blockType !== "meal") continue;
+      if (new Date(block.date) < cutoff) continue;
+      const arr = byDate.get(block.date) ?? [];
+      arr.push(block);
+      byDate.set(block.date, arr);
+    }
+
+    const points: NutritionDayPoint[] = [];
+    for (const [date, dayBlocks] of byDate.entries()) {
+      const snap = state.snapshots.find((s) => s.date === date);
+      const phaseId = snap?.nutritionPhaseId ?? state.currentNutritionPhaseId;
+      const r = computeNutritionAdherence(dayBlocks, phaseId);
+      points.push({
+        date,
+        kcal: r.actualKcal,       targetKcal: r.targetKcal,
+        protein: r.actualProtein, targetProtein: r.targetProtein,
+        carbs: r.actualCarbs,     targetCarbs: r.targetCarbs,
+        fat: r.actualFat,         targetFat: r.targetFat,
+      });
+    }
+    return points.sort((a, b) => a.date.localeCompare(b.date));
+  }, [state.blocks, state.snapshots, state.currentNutritionPhaseId, windowDays]);
+
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
       <View style={styles.header}>
@@ -926,6 +1178,58 @@ export default function InsightsScreen() {
             </View>
           </>
         )}
+
+        {/* ── Nutrition Trends ──────────────────────────────────────────── */}
+        <Text style={[styles.sectionTitle, { marginTop: 6 }]}>Nutrition Trends</Text>
+        <Text style={nt.sectionSubtitle}>
+          Actual intake vs daily target · {windowDays}d window
+        </Text>
+        <NutritionTrendChart
+          points={nutritionSeries.map((p) => ({ date: p.date, value: p.kcal }))}
+          label="Calories"
+          color={Colors.light.navyLight}
+          unit="kcal"
+          target={
+            nutritionSeries.length > 0
+              ? nutritionSeries[nutritionSeries.length - 1]!.targetKcal
+              : 2695
+          }
+        />
+        <NutritionTrendChart
+          points={nutritionSeries.map((p) => ({ date: p.date, value: p.protein }))}
+          label="Protein"
+          color={Colors.light.structuring}
+          unit="g"
+          target={
+            nutritionSeries.length > 0
+              ? nutritionSeries[nutritionSeries.length - 1]!.targetProtein
+              : 174
+          }
+          fmt={(v) => (Math.round(v * 10) / 10).toFixed(1)}
+        />
+        <NutritionTrendChart
+          points={nutritionSeries.map((p) => ({ date: p.date, value: p.carbs }))}
+          label="Carbohydrates"
+          color={Colors.light.amber}
+          unit="g"
+          target={
+            nutritionSeries.length > 0
+              ? nutritionSeries[nutritionSeries.length - 1]!.targetCarbs
+              : 331
+          }
+        />
+        <NutritionTrendChart
+          points={nutritionSeries.map((p) => ({ date: p.date, value: p.fat }))}
+          label="Fat"
+          color={Colors.light.rose}
+          unit="g"
+          target={
+            nutritionSeries.length > 0
+              ? nutritionSeries[nutritionSeries.length - 1]!.targetFat
+              : 54
+          }
+          fmt={(v) => (Math.round(v * 10) / 10).toFixed(1)}
+        />
 
         {/* ── Recommendations ───────────────────────────────────────────── */}
         <View style={styles.recHeader}>
