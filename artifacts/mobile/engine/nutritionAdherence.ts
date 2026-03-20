@@ -28,6 +28,38 @@ function completionFactor(status: string): number {
 // Critical = timing-sensitive; missing these has the biggest physiological cost
 const CRITICAL_SLOTS: MealSlot[] = ["precardio", "postcardio", "prelift", "postlift"];
 
+// ─── Ingredient unit display ──────────────────────────────────────────────────
+const INGREDIENT_UNIT: Record<string, string> = {
+  BANANA: "whole",
+  YOGURT: "cup",
+  EGG:    "egg",
+};
+function ingredientUnit(id: string): string { return INGREDIENT_UNIT[id] ?? "g"; }
+
+const INGREDIENT_NAME: Record<string, string> = {
+  OAT:     "Oats",
+  WHEY:    "Whey",
+  DEXTRIN: "Dextrin",
+  YOGURT:  "Yogurt",
+  BANANA:  "Banana",
+  EGG:     "Egg",
+  FLAX:    "Flax",
+};
+export function ingredientDisplayName(id: string): string { return INGREDIENT_NAME[id] ?? id; }
+
+// Canonical display order for ingredients
+const INGREDIENT_ORDER: Record<string, number> = {
+  BANANA: 0, OAT: 1, WHEY: 2, DEXTRIN: 3, YOGURT: 4, FLAX: 5, EGG: 6,
+};
+
+// ─── Per-ingredient tally ─────────────────────────────────────────────────────
+export interface IngredientTally {
+  ingredientId: string;
+  actual:  number;   // amount consumed (done=1.0, partial=0.5 of amountUnit)
+  planned: number;   // amount planned for the day (all non-skipped blocks)
+  unit:    string;   // "g", "whole", "cup", "egg"
+}
+
 // ─── Public types ──────────────────────────────────────────────────────────────
 export interface NutritionAdherenceResult {
   mealAdherence:    number;   // 0.0 – 1.0
@@ -47,6 +79,7 @@ export interface NutritionAdherenceResult {
   totalMeals:        number;   // all meal-type blocks for the day
   criticalScheduled: number;   // how many critical slots were in today's schedule
   criticalMissed:    MealSlot[];
+  ingredientTotals:  IngredientTally[];  // per-ingredient actual vs planned
 }
 
 // ─── Core computation ─────────────────────────────────────────────────────────
@@ -67,11 +100,13 @@ export function computeNutritionAdherence(
 
   let actualKcal    = 0;
   let actualProtein = 0;
-  let plannedKcal   = 0;   // full plan total: every non-skipped slot at factor 1.0
+  let plannedKcal   = 0;
   let plannedProtein= 0;
   let completionSum = 0;
   let criticalHit   = 0;
   const criticalMissed: MealSlot[] = [];
+  // ingredientId → { actual, planned }
+  const ingMap = new Map<string, { actual: number; planned: number }>();
 
   for (const block of mealBlocks) {
     const slot     = labelToSlot(block.label);
@@ -95,6 +130,16 @@ export function computeNutritionAdherence(
     if (block.status !== "skipped") {
       plannedKcal    += scaledKcal;
       plannedProtein += scaledProtein;
+    }
+
+    // Accumulate per-ingredient amounts from the compiled template lines
+    for (const line of template.lines) {
+      const entry = ingMap.get(line.ingredientId) ?? { actual: 0, planned: 0 };
+      entry.actual  += line.amountUnit * factor;
+      if (block.status !== "skipped") {
+        entry.planned += line.amountUnit;
+      }
+      ingMap.set(line.ingredientId, entry);
     }
 
     if (CRITICAL_SLOTS.includes(slot)) {
@@ -129,6 +174,18 @@ export function computeNutritionAdherence(
      timingScore * 0.10) * 100,
   );
 
+  // Build sorted ingredient tally
+  const ingredientTotals: IngredientTally[] = Array.from(ingMap.entries())
+    .map(([ingredientId, { actual, planned }]) => ({
+      ingredientId,
+      actual:  Math.round(actual  * 10) / 10,
+      planned: Math.round(planned * 10) / 10,
+      unit:    ingredientUnit(ingredientId),
+    }))
+    .sort((a, b) =>
+      (INGREDIENT_ORDER[a.ingredientId] ?? 99) - (INGREDIENT_ORDER[b.ingredientId] ?? 99),
+    );
+
   return {
     mealAdherence,
     caloricAdherence,
@@ -145,6 +202,7 @@ export function computeNutritionAdherence(
     totalMeals,
     criticalScheduled: scheduledCritical,
     criticalMissed,
+    ingredientTotals,
   };
 }
 

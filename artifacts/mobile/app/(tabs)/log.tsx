@@ -16,7 +16,7 @@ import { PhaseTag } from "@/components/ui/PhaseTag";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { NUTRITION_PHASE_MAP } from "@/data/nutritionPhases";
-import { computeNutritionAdherence, slotDisplayName } from "@/engine/nutritionAdherence";
+import { computeNutritionAdherence, ingredientDisplayName, slotDisplayName } from "@/engine/nutritionAdherence";
 import type { BlockStatus, NutritionPhaseId, ScheduleBlock } from "@/types";
 
 // ─── Training Log Card ────────────────────────────────────────────────────────
@@ -187,6 +187,35 @@ function NutritionScoreCard({
           </Text>
         </View>
       ))}
+
+      {result.ingredientTotals.length > 0 && (
+        <>
+          <View style={nsStyles.ingDivider} />
+          <Text style={nsStyles.ingHeader}>Ingredients</Text>
+          <View style={nsStyles.ingGrid}>
+            {result.ingredientTotals.map((ing) => {
+              const displayActual  = anyActed ? ing.actual  : ing.planned;
+              const ratio          = ing.planned > 0
+                ? Math.min(1, (anyActed ? ing.actual : ing.planned) / ing.planned)
+                : 0;
+              const fmtAmt = (n: number) =>
+                ing.unit === "g" ? `${Math.round(n)}g` : `${n % 1 === 0 ? n : n.toFixed(1)} ${ing.unit}`;
+              return (
+                <View key={ing.ingredientId} style={nsStyles.ingRow}>
+                  <Text style={nsStyles.ingName}>{ingredientDisplayName(ing.ingredientId)}</Text>
+                  <View style={nsStyles.ingBarTrack}>
+                    <View style={[nsStyles.ingBarFill, { width: `${Math.round(ratio * 100)}%` as any }]} />
+                  </View>
+                  <Text style={nsStyles.ingAmt}>
+                    {fmtAmt(displayActual)}
+                    <Text style={nsStyles.ingPlanned}> / {fmtAmt(ing.planned)}</Text>
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </>
+      )}
     </Pressable>
   );
 }
@@ -231,6 +260,15 @@ const nsStyles = StyleSheet.create({
   barFill: { height: 5, borderRadius: 3 },
   metricVal: { fontFamily: "Inter_600SemiBold", fontSize: 11, color: Colors.light.text, width: 70, textAlign: "right" },
   metricTarget: { fontFamily: "Inter_400Regular", fontSize: 10, color: Colors.light.textMuted },
+  ingDivider: { height: 1, backgroundColor: Colors.light.borderLight, marginVertical: 10 },
+  ingHeader: { fontFamily: "Inter_500Medium", fontSize: 10, color: Colors.light.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
+  ingGrid: { gap: 5 },
+  ingRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  ingName: { fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.light.textSecondary, width: 54 },
+  ingBarTrack: { flex: 1, height: 4, backgroundColor: Colors.light.borderLight, borderRadius: 2, overflow: "hidden" },
+  ingBarFill: { height: 4, backgroundColor: "#8FA8BE", borderRadius: 2 },
+  ingAmt: { fontFamily: "Inter_600SemiBold", fontSize: 10, color: Colors.light.text, width: 74, textAlign: "right" },
+  ingPlanned: { fontFamily: "Inter_400Regular", fontSize: 10, color: Colors.light.textMuted },
 });
 
 const STATUS_OPTIONS: BlockStatus[] = ["done", "partial", "skipped", "moved"];
