@@ -604,8 +604,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
     borderRadius: 8,
   },
-  dateBar: { flexGrow: 0, height: 78, marginBottom: 4 },
-  dateBarContent: { paddingHorizontal: 16, paddingVertical: 8, gap: 6, alignItems: "center" },
+  dateBar: { flexGrow: 0, height: 90, marginBottom: 4, overflow: "visible" },
+  dateBarContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 6 },
   dateChip: {
     alignItems: "center",
     paddingHorizontal: 14,
