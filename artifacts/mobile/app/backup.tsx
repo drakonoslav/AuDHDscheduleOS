@@ -298,7 +298,7 @@ export default function BackupScreen() {
 
     try {
       setImporting(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch (_) {}
 
       let newState;
       if (mode === "replace") {

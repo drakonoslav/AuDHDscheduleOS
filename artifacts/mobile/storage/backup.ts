@@ -47,6 +47,7 @@ export interface BackupMeta {
 export interface BackupConfig {
   currentNutritionPhaseId: NutritionPhaseId;
   onboardingComplete: boolean;
+  setupWizardComplete: boolean;
 }
 
 export interface BackupPayload {
@@ -109,6 +110,7 @@ export function buildBackup(state: AppState): BackupPayload {
     config: {
       currentNutritionPhaseId: state.currentNutritionPhaseId,
       onboardingComplete: state.onboardingComplete,
+      setupWizardComplete: state.setupWizardComplete ?? true,
     },
     blockTemplates: state.blockTemplates ?? [],
     blocks: state.blocks,
@@ -256,6 +258,9 @@ export function replaceWithBackup(payload: BackupPayload): AppState {
     recommendations: [],
     currentNutritionPhaseId: payload.config.currentNutritionPhaseId,
     onboardingComplete: payload.config.onboardingComplete,
+    // Old backups won't have this field — always default true so SeedGateway
+    // doesn't block the app after restore.
+    setupWizardComplete: payload.config.setupWizardComplete ?? true,
   };
   return recomputeState(raw);
 }
@@ -292,6 +297,7 @@ export function mergeBackup(existing: AppState, payload: BackupPayload): AppStat
     recommendations: existing.recommendations,
     currentNutritionPhaseId: payload.config.currentNutritionPhaseId,
     onboardingComplete: payload.config.onboardingComplete,
+    setupWizardComplete: payload.config.setupWizardComplete ?? true,
   };
   return recomputeState(raw);
 }
