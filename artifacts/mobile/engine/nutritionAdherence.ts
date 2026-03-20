@@ -57,13 +57,19 @@ export function computeNutritionAdherence(
   const templates = getMealTemplatesForPhase(nutritionPhaseId);
   const targets   = PHASE_DAILY_TARGETS[nutritionPhaseId];
 
+  // Template-level daily sums — used only for proportional weighting so that
+  // each meal's share of the phase target stays consistent with its relative
+  // macro composition.  The authoritative total comes from PHASE_DAILY_TARGETS.
+  const tmplDailyKcal    = templates.reduce((s, t) => s + t.totalKcal,    0) || 1;
+  const tmplDailyProtein = templates.reduce((s, t) => s + t.totalProtein, 0) || 1;
+
   const mealBlocks = blocks.filter((b) => b.blockType === "meal");
 
   let actualKcal    = 0;
   let actualProtein = 0;
   let plannedKcal   = 0;   // full plan total: every non-skipped slot at factor 1.0
   let plannedProtein= 0;
-  let completionSum = 0;     // sum of completion factors (0.0 – 1.0) across all meal blocks
+  let completionSum = 0;
   let criticalHit   = 0;
   const criticalMissed: MealSlot[] = [];
 
@@ -74,16 +80,21 @@ export function computeNutritionAdherence(
     const template = templates.find((t) => t.mealSlot === slot);
     if (!template) continue;
 
+    // Scale each meal's contribution so that 7/7 done always equals the phase
+    // daily target (PHASE_DAILY_TARGETS), matching what the Meals tab shows.
+    const kcalWeight    = template.totalKcal    / tmplDailyKcal;
+    const proteinWeight = template.totalProtein / tmplDailyProtein;
+    const scaledKcal    = targets.kcal    * kcalWeight;
+    const scaledProtein = targets.protein * proteinWeight;
+
     const factor      = completionFactor(block.status);
-    actualKcal       += template.totalKcal    * factor;
-    actualProtein    += template.totalProtein * factor;
+    actualKcal       += scaledKcal    * factor;
+    actualProtein    += scaledProtein * factor;
     completionSum    += factor;
 
-    // Planned totals include all non-skipped blocks at full value so the card
-    // can display what the day is designed to deliver regardless of completion.
     if (block.status !== "skipped") {
-      plannedKcal    += template.totalKcal;
-      plannedProtein += template.totalProtein;
+      plannedKcal    += scaledKcal;
+      plannedProtein += scaledProtein;
     }
 
     if (CRITICAL_SLOTS.includes(slot)) {
